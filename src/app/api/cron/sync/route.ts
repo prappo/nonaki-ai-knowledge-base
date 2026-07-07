@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { listItems, startImportJob, runImportJob, markJobFailed } from "@/lib/importer";
+import {
+  listItems,
+  startImportJob,
+  runImportJob,
+  markJobFailed,
+  isImportingDisabled,
+} from "@/lib/importer";
 import { nextSyncAt } from "@/lib/schedule";
 import { log } from "@/lib/indexer";
 
@@ -51,17 +57,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 2. Kick off due scheduled syncs.
-  const due = await prisma.source.findMany({
-    where: {
-      enabled: true,
-      syncInterval: { not: "manual" },
-      nextSyncAt: { lte: now },
-      status: { not: "syncing" },
-      type: { in: ["wordpress", "github"] },
-    },
-    take: 10,
-  });
+  // 2. Kick off due scheduled syncs (skipped while importing is disabled).
+  const due = isImportingDisabled()
+    ? []
+    : await prisma.source.findMany({
+        where: {
+          enabled: true,
+          syncInterval: { not: "manual" },
+          nextSyncAt: { lte: now },
+          status: { not: "syncing" },
+          type: { in: ["wordpress", "github"] },
+        },
+        take: 10,
+      });
   for (const source of due) {
     // Push nextSyncAt forward first so a crashing sync can't hot-loop the cron
     await prisma.source.update({

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { listItems, startImportJob } from "@/lib/importer";
+import { listItems, startImportJob, isImportingDisabled } from "@/lib/importer";
 
 export const maxDuration = 120;
 
@@ -8,6 +8,10 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (isImportingDisabled()) {
+    return Response.json({ error: "Data source importing is disabled" }, { status: 403 });
+  }
+
   const { id } = await params;
   const source = await prisma.source.findUnique({ where: { id } });
   if (!source) return Response.json({ error: "Source not found" }, { status: 404 });

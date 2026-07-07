@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { listItems, applySelection, startImportJob, type Selection } from "@/lib/importer";
+import {
+  listItems,
+  applySelection,
+  startImportJob,
+  isImportingDisabled,
+  type Selection,
+} from "@/lib/importer";
 import { normalizeWpUrl } from "@/lib/wordpress";
 import { normalizeRepo } from "@/lib/github";
 import { log } from "@/lib/indexer";
@@ -16,6 +22,10 @@ export const maxDuration = 120;
  * selection: { mode: "all" } (default) | { mode: "count", count } | { mode: "select", selected: [] }
  */
 export async function POST(req: NextRequest) {
+  if (isImportingDisabled()) {
+    return Response.json({ error: "Data source importing is disabled" }, { status: 403 });
+  }
+
   const body = (await req.json()) as {
     sourceId?: string;
     type?: string;

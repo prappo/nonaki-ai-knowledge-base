@@ -18,6 +18,11 @@ export type Selection =
   | { mode: "count"; count: number }
   | { mode: "select"; selected: string[] };
 
+/** DATA_SOURCE_DISABLED=true turns off importing new/updated content everywhere (manual, sync, upload, cron). */
+export function isImportingDisabled(): boolean {
+  return process.env.DATA_SOURCE_DISABLED === "true";
+}
+
 /** List importable items for a source type + config (used for preview & jobs). */
 export async function listItems(
   type: string,
@@ -60,6 +65,10 @@ export async function startImportJob(
   kind: "import" | "sync" = "import",
   opts: { trigger?: "manual" | "schedule" | "retry"; retryOfId?: string; actor?: string } = {}
 ) {
+  if (isImportingDisabled()) {
+    throw new Error("Data source importing is disabled");
+  }
+
   const active = await prisma.importJob.findFirst({
     where: { sourceId, status: { in: ["running", "paused"] } },
   });

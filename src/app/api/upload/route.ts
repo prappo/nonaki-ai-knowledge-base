@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { extractText } from "@/lib/extract";
 import { indexDocument, log } from "@/lib/indexer";
+import { isImportingDisabled } from "@/lib/importer";
 
 export const maxDuration = 300;
 
@@ -14,6 +15,10 @@ async function getUploadSource() {
 }
 
 export async function POST(req: NextRequest) {
+  if (isImportingDisabled()) {
+    return Response.json({ error: "Data source importing is disabled" }, { status: 403 });
+  }
+
   const formData = await req.formData();
   const files = formData.getAll("files").filter((f): f is File => f instanceof File);
   if (files.length === 0) {
