@@ -1,0 +1,311 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-instrument), "Instrument Sans", system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, Monaco, "Cascadia Mono", monospace;
+
+  /* Nonaki palette (light — from design) */
+  --color-ink: #1c2429;
+  --color-body: #2a343a;
+  --color-slate: #48545a;
+  --color-dim: #5c6a70;
+  --color-muted: #7c8b90;
+  --color-faint: #9aa6ab;
+  --color-ghost: #c8ced2;
+
+  --color-teal: #0e7f93;
+  --color-teal-dark: #0b6a7b;
+  --color-teal-soft: #e0eaec;
+  --color-teal-wash: #e9f2f4;
+  --color-teal-mist: #f0f7f8;
+  --color-teal-line: #bcd6dc;
+  --color-teal-hairline: #d5e6ea;
+  --color-teal-dash: #8fbcc6;
+  --color-teal-ink: #2a4a52;
+
+  --color-paper: #fcfdfd;
+  --color-panel: #fafcfc;
+  --color-card: #ffffff;
+  --color-rail: #f2f5f6;
+  --color-railhover: #e8eeef;
+  --color-chip: #f2f5f6;
+  --color-line: #e3e9ea;
+  --color-edge: #dde4e6;
+  --color-hairline: #e9eef0;
+  --color-hairline-2: #edf1f2;
+  --color-row-line: #eef2f3;
+  --color-hover: #f6f9fa;
+  --color-track: #eef1f2;
+
+  --color-green: #1f8a5b;
+  --color-green-soft: #e8f5ee;
+  --color-green-deep: #2c6e46;
+  --color-avatar-green: #cfe0d6;
+
+  --color-orange: #d97742;
+  --color-amber: #b0763a;
+  --color-amber-soft: #faf2e6;
+  --color-warn-bg: #fdf6ec;
+  --color-warn-line: #ecd9b8;
+  --color-warn-text: #6e5a3a;
+
+  --color-diff-del: #fbe9e7;
+  --color-diff-del-line: #c26b5a;
+  --color-diff-add: #e3f2ec;
+
+  --color-wp-chip: #eaf1f5;
+  --color-wp-ink: #2a5a7a;
+  --color-gh-chip: #eef0f4;
+  --color-gh-ink: #3a4453;
+  --color-up-chip: #f0f0f4;
+  --color-up-ink: #4a4a6a;
+
+  --color-select: #cfe6ea;
+}
+
+/* ── dark palette — same tokens, flipped ─────────────────────── */
+.dark {
+  --color-ink: #e7edf0;
+  --color-body: #cdd7db;
+  --color-slate: #b0bcc1;
+  --color-dim: #96a5ab;
+  --color-muted: #7e8e94;
+  --color-faint: #5f6f75;
+  --color-ghost: #404e54;
+
+  --color-teal: #35a8bd;
+  --color-teal-dark: #5cbfd2;
+  --color-teal-soft: #123540;
+  --color-teal-wash: #0f2d36;
+  --color-teal-mist: #0d2730;
+  --color-teal-line: #2a545f;
+  --color-teal-hairline: #1e3f49;
+  --color-teal-dash: #3d6b77;
+  --color-teal-ink: #a9ccd6;
+
+  --color-paper: #0f1518;
+  --color-panel: #121a1e;
+  --color-card: #161f25;
+  --color-rail: #0b1114;
+  --color-railhover: #1a2429;
+  --color-chip: #1e282d;
+  --color-line: #233138;
+  --color-edge: #2b3a41;
+  --color-hairline: #1f2b31;
+  --color-hairline-2: #1d282e;
+  --color-row-line: #1b262b;
+  --color-hover: #161f24;
+  --color-track: #1e282d;
+
+  --color-green: #37b37e;
+  --color-green-soft: #102c20;
+  --color-green-deep: #8fd6b4;
+  --color-avatar-green: #1e3b2b;
+
+  --color-orange: #e0854f;
+  --color-amber: #d4a05e;
+  --color-amber-soft: #2e2413;
+  --color-warn-bg: #251e10;
+  --color-warn-line: #4a3b1e;
+  --color-warn-text: #d9c399;
+
+  --color-diff-del: #3a201b;
+  --color-diff-del-line: #e08b77;
+  --color-diff-add: #143329;
+
+  --color-wp-chip: #14303f;
+  --color-wp-ink: #7fb3d4;
+  --color-gh-chip: #222b36;
+  --color-gh-ink: #a9b6c8;
+  --color-up-chip: #262633;
+  --color-up-ink: #a0a0c2;
+
+  --color-select: #1d4753;
+
+  color-scheme: dark;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-select);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-edge);
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+/* Loading skeleton: shimmering placeholder while data loads */
+@keyframes skeleton-sweep {
+  100% { transform: translateX(100%); }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--color-track);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: skeleton-sweep 1.5s ease-in-out infinite;
+}
+.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+}
+
+/* Indeterminate progress: a bar sweeping left → right inside a track */
+@keyframes bar-sweep {
+  0% { left: -35%; }
+  100% { left: 100%; }
+}
+.bar-indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+.bar-indeterminate::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -35%;
+  width: 35%;
+  border-radius: inherit;
+  background: currentColor;
+  animation: bar-sweep 1.1s ease-in-out infinite;
+}
+
+/* ── Notion-style document editor (Tiptap) ───────────────────── */
+.notion-editor .ProseMirror {
+  outline: none;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--color-body);
+  caret-color: var(--color-teal);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.notion-editor .ProseMirror ::selection {
+  background: var(--color-select);
+}
+.notion-editor .ProseMirror > * + * {
+  margin-top: 0.55em;
+}
+.notion-editor .ProseMirror h1,
+.notion-editor .ProseMirror h2,
+.notion-editor .ProseMirror h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  line-height: 1.3;
+}
+.notion-editor .ProseMirror h1 { font-size: 1.65em; margin-top: 1.15em; }
+.notion-editor .ProseMirror h2 { font-size: 1.35em; margin-top: 1.05em; }
+.notion-editor .ProseMirror h3 { font-size: 1.15em; margin-top: 0.95em; }
+.notion-editor .ProseMirror > h1:first-child,
+.notion-editor .ProseMirror > h2:first-child,
+.notion-editor .ProseMirror > h3:first-child {
+  margin-top: 0;
+}
+.notion-editor .ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.45em;
+}
+.notion-editor .ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.45em;
+}
+.notion-editor .ProseMirror li + li {
+  margin-top: 0.2em;
+}
+.notion-editor .ProseMirror li > p {
+  margin: 0;
+}
+.notion-editor .ProseMirror li::marker {
+  color: var(--color-muted);
+}
+.notion-editor .ProseMirror blockquote {
+  border-left: 3px solid var(--color-teal-dash);
+  padding-left: 0.9em;
+  color: var(--color-slate);
+}
+.notion-editor .ProseMirror code {
+  background: var(--color-chip);
+  border: 1px solid var(--color-hairline);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+.notion-editor .ProseMirror pre {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 0.8em 1em;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.notion-editor .ProseMirror pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1em;
+}
+.notion-editor .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--color-edge);
+  margin: 1.4em 0;
+}
+.notion-editor .ProseMirror hr.ProseMirror-selectednode {
+  border-top-color: var(--color-teal);
+}
+.notion-editor .ProseMirror a {
+  color: var(--color-teal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.notion-editor .ProseMirror .is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-faint);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

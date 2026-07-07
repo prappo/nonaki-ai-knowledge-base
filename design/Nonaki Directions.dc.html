@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#eef0f3;font-family:"Instrument Sans",system-ui,sans-serif}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 "Instrument Sans",system-ui,sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 "Instrument Sans",system-ui,sans-serif;color:rgba(0,0,0,.55)}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.dv-opt:target .dv-oid{background:#0e7f93;color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.5 "Instrument Sans",system-ui,sans-serif;color:rgba(0,0,0,.5)}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t4" data-screen-label="Turn 4 — Doc editor">
+<div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Doc editor with AI assistant (<a class="dv-oid" href="#4a">4a</a>) · search added beside Ask on <a class="dv-oid" href="#1b">1b</a></span></div>
+<div class="dv-opts">
+
+<!-- ══════════════════ 4a DOC EDITOR ══════════════════ -->
+<div class="dv-opt" id="4a">
+<div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>Doc editor — inline AI toolbar on selection, drift banner in context, assistant panel for commands</div>
+<div class="dv-card" style="width:1150px">
+<div style="display:flex;height:840px;background:#fcfdfd;font-size:13px;color:#1c2429;font-family:'Instrument Sans',system-ui,sans-serif">
+
+  <!-- icon rail -->
+  <div style="width:54px;flex:none;background:#f2f5f6;border-right:1px solid #e3e9ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px">
+    <div style="width:28px;height:28px;border-radius:7px;background:#0e7f93;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;margin-bottom:8px">N</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90;font-size:14px" style-hover="background:#e8eeef">✦</div>
+    <div style="width:34px;height:34px;border-radius:8px;background:#e0eaec;display:grid;place-items:center;color:#0e7f93"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:3px;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:50%;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:11px;height:8px;border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor;display:inline-block"></span></div>
+    <div style="margin-top:auto;width:28px;height:28px;border-radius:50%;background:#cfe0d6;color:#2c6e46;display:grid;place-items:center;font-size:10px;font-weight:600">DK</div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <!-- top strip -->
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 24px;border-bottom:1px solid #e9eef0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#7c8b90;letter-spacing:.03em">
+      <span>ACME-CORP / ENGINEERING / DEPLOY-CHECKLIST</span>
+      <span style="margin-left:auto;color:#1f8a5b">SAVED · JUST NOW</span>
+      <span>v15 · DRAFT EDITS</span>
+    </div>
+
+    <!-- doc toolbar -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid #e9eef0">
+      <span style="font-size:12px;color:#7c8b90">Engineering</span><span style="color:#c8ced2">›</span><span style="font-size:12px;font-weight:600">Deploy checklist</span>
+      <span style="font-size:10.5px;color:#1f8a5b;background:#e8f5ee;border-radius:5px;padding:2px 8px;font-weight:600">✓ Verified · Jul 1</span>
+      <span style="margin-left:auto;display:flex;align-items:center">
+        <span style="width:24px;height:24px;border-radius:50%;background:#f0dcd2;color:#a5562c;display:grid;place-items:center;font-size:9px;font-weight:600;border:2px solid #fff">PR</span>
+        <span style="width:24px;height:24px;border-radius:50%;background:#d7dff2;color:#3a5bbd;display:grid;place-items:center;font-size:9px;font-weight:600;border:2px solid #fff;margin-left:-7px">DK</span>
+      </span>
+      <span style="font-size:11.5px;font-weight:600;color:#0e7f93;border:1px solid #bcd6dc;border-radius:6px;padding:5px 12px;background:#fff" style-hover="background:#e0eaec">Re-attest ✓</span>
+      <span style="font-size:11.5px;font-weight:600;color:#fff;background:#0e7f93;border-radius:6px;padding:5px 12px" style-hover="background:#0b6a7b">Share</span>
+      <span style="color:#7c8b90;padding:0 2px">⋯</span>
+    </div>
+
+    <div style="flex:1;min-height:0;display:flex">
+      <!-- editor column -->
+      <div style="flex:1;min-width:0;overflow:hidden;display:flex;justify-content:center;padding:36px 40px 0">
+        <div style="width:660px;max-width:100%">
+          <div style="font-size:30px;font-weight:700;letter-spacing:-.02em">Deploy checklist</div>
+          <div style="margin-top:8px;display:flex;gap:14px;font-size:11.5px;color:#9aa6ab">
+            <span>Owned by Priya K.</span><span>Updated by Nonaki Agent · approved by you</span><span>3 subscribers</span>
+          </div>
+
+          <div style="margin-top:24px;font-size:13.5px;line-height:1.75;color:#2a343a">
+            Every production deploy follows this checklist. If a step fails, stop and post in <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f2f5f6;border-radius:4px;padding:1px 5px">#deploys</span> before continuing.
+          </div>
+
+          <div style="margin-top:20px;font-size:17px;font-weight:600">1. Pre-flight</div>
+          <div style="margin-top:6px;font-size:13.5px;line-height:1.75;color:#2a343a">
+            Confirm CI is green on <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f2f5f6;border-radius:4px;padding:1px 5px">main</span> and no open Sev-1 incidents. Freeze windows are listed in the release calendar.
+          </div>
+
+          <div style="margin-top:18px;font-size:17px;font-weight:600">2. Stage &amp; verify</div>
+          <div style="margin-top:6px;font-size:13.5px;line-height:1.75;color:#2a343a;position:relative">
+            <span style="background:#cfe6ea;border-radius:2px">Deploy to staging and run the smoke suite. QA signs off in the release thread.</span>
+            <!-- floating AI toolbar -->
+            <div style="position:absolute;left:0;top:-44px;display:flex;align-items:center;gap:2px;background:#1c2429;border-radius:8px;padding:5px 6px;box-shadow:0 6px 18px rgba(10,20,25,.25);white-space:nowrap">
+              <span style="color:#7fd1de;font-size:12px;padding:3px 8px;font-weight:600">✦ Nonaki</span>
+              <span style="width:1px;height:14px;background:#3a444c"></span>
+              <span style="color:#e6ebee;font-size:11.5px;padding:3px 8px;border-radius:5px" style-hover="background:#2c363e">Improve</span>
+              <span style="color:#e6ebee;font-size:11.5px;padding:3px 8px;border-radius:5px" style-hover="background:#2c363e">Shorten</span>
+              <span style="color:#e6ebee;font-size:11.5px;padding:3px 8px;border-radius:5px" style-hover="background:#2c363e">Update from sources</span>
+              <span style="color:#e6ebee;font-size:11.5px;padding:3px 8px;border-radius:5px" style-hover="background:#2c363e">Add citation</span>
+            </div>
+          </div>
+
+          <div style="margin-top:18px;font-size:17px;font-weight:600">3. Deploy to production</div>
+          <!-- drift banner in context -->
+          <div style="margin-top:8px;display:flex;align-items:center;gap:9px;background:#fdf6ec;border:1px solid #ecd9b8;border-radius:8px;padding:9px 13px;font-size:11.5px;color:#6e5a3a;line-height:1.5">
+            <span style="width:7px;height:7px;border-radius:50%;background:#d97742;flex:none"></span>
+            <div><b>Possible drift:</b> PR <span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;background:#fff;border-radius:4px;padding:0 4px">#486</span> changes rate limits referenced below.</div>
+            <span style="margin-left:auto;font-size:11px;font-weight:600;color:#0e7f93;flex:none" style-hover="color:#0b6a7b">Check with Agent →</span>
+          </div>
+          <div style="margin-top:8px;font-size:13.5px;line-height:1.75;color:#2a343a">
+            Run <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f2f5f6;border-radius:4px;padding:1px 5px">deploy.sh --prod</span> — this provisions the <b>green</b> environment alongside live. Verify at <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f2f5f6;border-radius:4px;padding:1px 5px">staging-green.acme.io</span>, then flip traffic with <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f2f5f6;border-radius:4px;padding:1px 5px">cutover.sh</span>.<span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#0e7f93;background:#e0eaec;border-radius:4px;padding:0 4px;margin:0 3px">PR #482</span>
+          </div>
+
+          <div style="margin-top:18px;font-size:17px;font-weight:600">4. Rollback</div>
+          <div style="margin-top:6px;font-size:13.5px;line-height:1.75;color:#2a343a">
+            Flip traffic back to blue — instant, no downtime. Keep green warm for 24 h before tearing down.
+          </div>
+
+          <div style="margin-top:18px;display:flex;align-items:center;gap:8px;color:#9aa6ab;font-size:12.5px">
+            <span style="width:18px;height:18px;border:1px dashed #c8ced2;border-radius:5px;display:grid;place-items:center;font-size:12px">＋</span>
+            <span>Type <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;background:#f2f5f6;border-radius:4px;padding:1px 5px">/</span> for blocks, <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;background:#f2f5f6;border-radius:4px;padding:1px 5px">✦</span> for the assistant</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- assistant panel -->
+      <div style="width:300px;flex:none;border-left:1px solid #e9eef0;background:#fafcfc;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid #e9eef0">
+          <span style="color:#0e7f93;font-size:13px">✦</span>
+          <span style="font-weight:600;font-size:12.5px">Assistant</span>
+          <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#7c8b90;background:#f2f5f6;border-radius:4px;padding:2px 6px">THIS DOC</span>
+        </div>
+        <div style="flex:1;min-height:0;overflow:hidden;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+          <div style="align-self:flex-end;max-width:88%;background:#0e7f93;color:#fff;border-radius:11px 11px 3px 11px;padding:9px 13px;font-size:12px;line-height:1.55">Add a rollback drill section — we agreed to run one monthly</div>
+          <div style="align-self:flex-start;max-width:94%;background:#fff;border:1px solid #e3e9ea;border-radius:11px 11px 11px 3px;padding:11px 13px;font-size:12px;line-height:1.6;color:#2a343a">
+            Drafted from the <b>Platform sync — Jul 1</b> notes<span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#0e7f93;background:#e0eaec;border-radius:4px;padding:0 4px;margin:0 2px">1</span>:
+            <div style="margin-top:8px;background:#f4f9fa;border-left:2px solid #0e7f93;border-radius:0 6px 6px 0;padding:8px 11px;font-size:11.5px;line-height:1.6">
+              <b>5. Monthly rollback drill</b><br>First Tuesday each month, on-call runs a full blue↔green flip in staging and logs timing in the drill sheet…
+            </div>
+            <div style="margin-top:9px;display:flex;gap:7px">
+              <span style="font-size:11px;font-weight:600;color:#fff;background:#0e7f93;border-radius:6px;padding:4px 11px" style-hover="background:#0b6a7b">Insert at cursor</span>
+              <span style="font-size:11px;font-weight:600;color:#7c8b90;padding:4px 6px" style-hover="color:#1c2429">Discard</span>
+            </div>
+          </div>
+          <div style="align-self:flex-start;font-size:10.5px;color:#9aa6ab;display:flex;gap:6px;align-items:center"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#0e7f93">1</span>Platform sync — Jul 1 · meeting notes</div>
+        </div>
+        <div style="padding:12px 14px;border-top:1px solid #e9eef0">
+          <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dde4e6;border-radius:9px;padding:9px 12px" style-hover="border-color:#0e7f93">
+            <span style="color:#0e7f93;font-size:12px">✦</span>
+            <span style="font-size:12px;color:#9aa6ab">Ask or give a command…</span>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#c8ced2">↵</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "show the slash menu open" · "version history with agent edits marked" · "make the whole flow clickable"</p>
+</section>
+
+<section class="dv-turn" id="t3" data-screen-label="Turn 3 — Self-maintaining KB">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Self-maintaining knowledge base — Nonaki Agent: drift detection + review queue (<a class="dv-oid" href="#3a">3a</a>), weekly maintenance digest (<a class="dv-oid" href="#3b">3b</a>)</span></div>
+<div class="dv-opts">
+
+<!-- ══════════════════ 3a AGENT REVIEW QUEUE ══════════════════ -->
+<div class="dv-opt" id="3a">
+<div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Agent review queue — drift detected in sources, proposed edits wait for human approval, old vs new side by side</div>
+<div class="dv-card" style="width:1150px">
+<div style="display:flex;height:730px;background:#fcfdfd;font-size:13px;color:#1c2429;font-family:'Instrument Sans',system-ui,sans-serif">
+
+  <!-- icon rail -->
+  <div style="width:54px;flex:none;background:#f2f5f6;border-right:1px solid #e3e9ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px">
+    <div style="width:28px;height:28px;border-radius:7px;background:#0e7f93;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;margin-bottom:8px">N</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90;font-size:14px" style-hover="background:#e8eeef">✦</div>
+    <div style="position:relative;width:34px;height:34px;border-radius:8px;background:#e0eaec;display:grid;place-items:center;color:#0e7f93"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:3px;display:inline-block"></span><span style="position:absolute;top:-3px;right:-3px;background:#d97742;color:#fff;font-size:8.5px;font-weight:700;border-radius:8px;padding:1px 4.5px">7</span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:50%;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:11px;height:8px;border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor;display:inline-block"></span></div>
+    <div style="margin-top:auto;width:28px;height:28px;border-radius:50%;background:#cfe0d6;color:#2c6e46;display:grid;place-items:center;font-size:10px;font-weight:600">DK</div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 24px;border-bottom:1px solid #e9eef0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#7c8b90;letter-spacing:.03em">
+      <span>ACME-CORP / AGENT / REVIEW QUEUE</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#1f8a5b;display:inline-block"></span>WATCHING 6 SOURCES</span>
+      <span style="color:#b0763a">7 PROPOSALS WAITING</span>
+    </div>
+
+    <div style="flex:1;overflow:hidden;display:flex">
+      <!-- proposal list -->
+      <div style="width:296px;flex:none;border-right:1px solid #e9eef0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:16px 16px 10px">
+          <div style="font-size:15px;font-weight:600">Review queue</div>
+          <div style="margin-top:2px;font-size:11.5px;color:#7c8b90;line-height:1.45">Nothing publishes until you approve it.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;overflow:hidden">
+          <div style="padding:12px 16px;background:#e9f2f4;border-left:3px solid #0e7f93">
+            <div style="display:flex;gap:6px;align-items:center"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8.5px;color:#0e7f93;background:#fff;border:1px solid #bcd6dc;border-radius:4px;padding:2px 5px;flex:none">UPDATE</span><span style="font-weight:600;font-size:12.5px">Deploy checklist</span></div>
+            <div style="margin-top:5px;font-size:11px;color:#5c6a70;line-height:1.45">PR #482 switched deploys to blue-green — 3 steps in this doc are now wrong.</div>
+            <div style="margin-top:5px;font-size:10px;color:#9aa6ab;font-family:ui-monospace,Menlo,monospace">GITHUB · 2 H AGO</div>
+          </div>
+          <div style="padding:12px 16px;border-bottom:1px solid #eef2f3" style-hover="background:#f6f9fa">
+            <div style="display:flex;gap:6px;align-items:center"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8.5px;color:#0e7f93;background:#f2f5f6;border-radius:4px;padding:2px 5px;flex:none">UPDATE</span><span style="font-weight:600;font-size:12.5px">Refund policy</span></div>
+            <div style="margin-top:5px;font-size:11px;color:#5c6a70;line-height:1.45">New 45-day window agreed in #cs-leads, doc still says 30.</div>
+            <div style="margin-top:5px;font-size:10px;color:#9aa6ab;font-family:ui-monospace,Menlo,monospace">SLACK · 5 H AGO</div>
+          </div>
+          <div style="padding:12px 16px;border-bottom:1px solid #eef2f3" style-hover="background:#f6f9fa">
+            <div style="display:flex;gap:6px;align-items:center"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8.5px;color:#2c6e46;background:#e8f5ee;border-radius:4px;padding:2px 5px;flex:none">NEW DOC</span><span style="font-weight:600;font-size:12.5px">SSO setup for Okta</span></div>
+            <div style="margin-top:5px;font-size:11px;color:#5c6a70;line-height:1.45">Drafted from closed Jira epic PLAT-291 + 4 support tickets.</div>
+            <div style="margin-top:5px;font-size:10px;color:#9aa6ab;font-family:ui-monospace,Menlo,monospace">JIRA · YESTERDAY</div>
+          </div>
+          <div style="padding:12px 16px;border-bottom:1px solid #eef2f3" style-hover="background:#f6f9fa">
+            <div style="display:flex;gap:6px;align-items:center"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8.5px;color:#8a5a2c;background:#faf2e6;border-radius:4px;padding:2px 5px;flex:none">ARCHIVE</span><span style="font-weight:600;font-size:12.5px">Legacy VPN guide</span></div>
+            <div style="margin-top:5px;font-size:11px;color:#5c6a70;line-height:1.45">Tool decommissioned Jun 15; doc unvisited for 90 days.</div>
+            <div style="margin-top:5px;font-size:10px;color:#9aa6ab;font-family:ui-monospace,Menlo,monospace">DRIFT WATCH · 2 D AGO</div>
+          </div>
+          <div style="padding:12px 16px" style-hover="background:#f6f9fa">
+            <div style="display:flex;gap:6px;align-items:center"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8.5px;color:#0e7f93;background:#f2f5f6;border-radius:4px;padding:2px 5px;flex:none">UPDATE</span><span style="font-weight:600;font-size:12.5px">On-call rotation</span></div>
+            <div style="margin-top:5px;font-size:11px;color:#5c6a70;line-height:1.45">PagerDuty schedule changed — two names out of date.</div>
+            <div style="margin-top:5px;font-size:10px;color:#9aa6ab;font-family:ui-monospace,Menlo,monospace">PAGERDUTY · 3 D AGO</div>
+          </div>
+        </div>
+        <div style="margin-top:auto;padding:12px 16px;border-top:1px solid #e9eef0;font-size:11px;color:#7c8b90;line-height:1.5">+ 2 more proposals · <span style="color:#0e7f93;font-weight:600">View history</span></div>
+      </div>
+
+      <!-- diff view -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:16px 24px 0">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:17px;font-weight:600;letter-spacing:-.01em">Deploy checklist</div>
+            <span style="font-size:10.5px;color:#1f8a5b;background:#e8f5ee;border-radius:5px;padding:2px 8px;font-weight:600">✓ Verified · Mar 12</span>
+            <span style="font-size:11px;color:#7c8b90">Engineering · owned by Priya K.</span>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:9px;background:#fdf6ec;border:1px solid #ecd9b8;border-radius:9px;padding:10px 14px;font-size:12px;color:#6e5a3a;line-height:1.5">
+            <span style="width:8px;height:8px;border-radius:50%;background:#d97742;flex:none"></span>
+            <div><b>Drift detected:</b> PR <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;background:#fff;border-radius:4px;padding:0 5px">acme/platform#482</span> "Move to blue-green deploys" merged Jun 30 · confirmed in #eng by 2 engineers. Steps 3–5 below no longer match reality.</div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;display:flex;gap:14px;padding:14px 24px">
+          <div style="flex:1;min-width:0;background:#fff;border:1px solid #e3e9ea;border-radius:10px;overflow:hidden;display:flex;flex-direction:column">
+            <div style="padding:9px 14px;border-bottom:1px solid #edf1f2;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.08em;color:#7c8b90">CURRENT · v14 · EDITED MAR 12</div>
+            <div style="padding:14px 16px;font-size:12px;line-height:1.7;color:#48545a;overflow:hidden">
+              <b style="color:#1c2429">3. Deploy to production</b><br>
+              <span style="background:#fbe9e7;text-decoration:line-through;text-decoration-color:#c26b5a">Run <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px">deploy.sh --prod</span> from the release branch.</span><br>
+              <span style="background:#fbe9e7;text-decoration:line-through;text-decoration-color:#c26b5a">Traffic cuts over immediately; watch error rates for 10 minutes.</span><br><br>
+              <b style="color:#1c2429">4. Rollback</b><br>
+              <span style="background:#fbe9e7;text-decoration:line-through;text-decoration-color:#c26b5a">Re-deploy the previous tag. Expect ~4 min of downtime.</span><br><br>
+              <b style="color:#1c2429">5. Announce</b><br>
+              Post in #deploys with the release tag.
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;background:#fff;border:1.5px solid #0e7f93;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 4px 14px rgba(14,127,147,.08)">
+            <div style="padding:9px 14px;border-bottom:1px solid #d5e6ea;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.08em;color:#0e7f93;background:#f0f7f8">PROPOSED BY AGENT · CITES PR #482</div>
+            <div style="padding:14px 16px;font-size:12px;line-height:1.7;color:#48545a;overflow:hidden">
+              <b style="color:#1c2429">3. Deploy to production</b><br>
+              <span style="background:#e3f2ec">Run <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px">deploy.sh --prod</span> — this now provisions the <b>green</b> environment alongside live.</span><br>
+              <span style="background:#e3f2ec">Verify green at <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px">staging-green.acme.io</span>, then flip traffic with <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px">cutover.sh</span>.</span><br><br>
+              <b style="color:#1c2429">4. Rollback</b><br>
+              <span style="background:#e3f2ec">Flip traffic back to blue — instant, no downtime.</span><br><br>
+              <b style="color:#1c2429">5. Announce</b><br>
+              Post in #deploys with the release tag.
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:12px 24px 18px;display:flex;align-items:center;gap:10px;border-top:1px solid #e9eef0">
+          <span style="background:#0e7f93;color:#fff;border-radius:7px;font-size:12.5px;font-weight:600;padding:8px 18px" style-hover="background:#0b6a7b">✓ Approve &amp; publish</span>
+          <span style="font-size:12.5px;font-weight:600;color:#0e7f93;border:1px solid #bcd6dc;border-radius:7px;padding:8px 16px;background:#fff" style-hover="background:#e0eaec">Edit draft</span>
+          <span style="font-size:12.5px;color:#7c8b90;padding:8px 10px" style-hover="color:#1c2429">Reject</span>
+          <span style="margin-left:auto;font-size:11px;color:#9aa6ab">Approving re-verifies the doc and notifies 3 subscribers</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════ 3b MAINTENANCE DIGEST ══════════════════ -->
+<div class="dv-opt" id="3b">
+<div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Weekly maintenance digest — what drifted, what the agent did, what needs your call</div>
+<div class="dv-card" style="width:1150px">
+<div style="display:flex;height:730px;background:#fcfdfd;font-size:13px;color:#1c2429;font-family:'Instrument Sans',system-ui,sans-serif">
+
+  <!-- icon rail -->
+  <div style="width:54px;flex:none;background:#f2f5f6;border-right:1px solid #e3e9ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px">
+    <div style="width:28px;height:28px;border-radius:7px;background:#0e7f93;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;margin-bottom:8px">N</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90;font-size:14px" style-hover="background:#e8eeef">✦</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:3px;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;background:#e0eaec;display:grid;place-items:center;color:#0e7f93"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:50%;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:11px;height:8px;border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor;display:inline-block"></span></div>
+    <div style="margin-top:auto;width:28px;height:28px;border-radius:50%;background:#cfe0d6;color:#2c6e46;display:grid;place-items:center;font-size:10px;font-weight:600">DK</div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 24px;border-bottom:1px solid #e9eef0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#7c8b90;letter-spacing:.03em">
+      <span>ACME-CORP / AGENT / DIGEST</span>
+      <span style="margin-left:auto">WEEK OF JUN 29 – JUL 5</span>
+      <span style="color:#1f8a5b">BASE HEALTH 87% → 91%</span>
+    </div>
+
+    <div style="flex:1;overflow:hidden;padding:28px 36px;display:flex;gap:28px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:21px;font-weight:600;letter-spacing:-.01em">Your maintenance digest</div>
+        <div style="margin-top:3px;font-size:12.5px;color:#7c8b90">While you worked, Nonaki watched 6 sources and kept 372 docs honest. Here's the week.</div>
+
+        <div style="margin-top:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div style="background:#fff;border:1px solid #e3e9ea;border-radius:10px;padding:13px 15px"><div style="font-size:22px;font-weight:700;letter-spacing:-.02em">214</div><div style="margin-top:2px;font-size:11px;color:#7c8b90;line-height:1.4">events watched across sources</div></div>
+          <div style="background:#fff;border:1px solid #e3e9ea;border-radius:10px;padding:13px 15px"><div style="font-size:22px;font-weight:700;letter-spacing:-.02em;color:#b0763a">9</div><div style="margin-top:2px;font-size:11px;color:#7c8b90;line-height:1.4">docs drifted from reality</div></div>
+          <div style="background:#fff;border:1px solid #e3e9ea;border-radius:10px;padding:13px 15px"><div style="font-size:22px;font-weight:700;letter-spacing:-.02em;color:#0e7f93">7</div><div style="margin-top:2px;font-size:11px;color:#7c8b90;line-height:1.4">updates drafted, awaiting review</div></div>
+          <div style="background:#fff;border:1px solid #e3e9ea;border-radius:10px;padding:13px 15px"><div style="font-size:22px;font-weight:700;letter-spacing:-.02em;color:#1f8a5b">12</div><div style="margin-top:2px;font-size:11px;color:#7c8b90;line-height:1.4">approved &amp; published by owners</div></div>
+        </div>
+
+        <div style="margin-top:22px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">NEEDS YOUR CALL — 3 DOCS YOU OWN</div>
+        <div style="margin-top:8px;background:#fff;border:1px solid #e3e9ea;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #edf1f2">
+            <span style="width:8px;height:8px;border-radius:50%;background:#d97742;flex:none"></span>
+            <div style="min-width:0"><b style="font-size:12.5px">Deploy checklist</b> <span style="color:#7c8b90;font-size:12px">— blue-green deploys landed; steps 3–5 rewritten</span></div>
+            <span style="margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:#fff;background:#0e7f93;border-radius:6px;padding:4px 12px" style-hover="background:#0b6a7b">Review diff</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #edf1f2">
+            <span style="width:8px;height:8px;border-radius:50%;background:#d97742;flex:none"></span>
+            <div style="min-width:0"><b style="font-size:12.5px">On-call rotation</b> <span style="color:#7c8b90;font-size:12px">— PagerDuty schedule changed; two names stale</span></div>
+            <span style="margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:#0e7f93;border:1px solid #bcd6dc;border-radius:6px;padding:4px 12px;background:#fff" style-hover="background:#e0eaec">Review diff</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 16px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#d9a15c;flex:none"></span>
+            <div style="min-width:0"><b style="font-size:12.5px">Incident response runbook</b> <span style="color:#7c8b90;font-size:12px">— verification expires in 6 days; re-attest or update</span></div>
+            <span style="margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:#0e7f93;border:1px solid #bcd6dc;border-radius:6px;padding:4px 12px;background:#fff" style-hover="background:#e0eaec">Re-attest ✓</span>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">HANDLED WITHOUT YOU — SAMPLE</div>
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:11px;font-size:12px;color:#48545a;background:#fff;border:1px solid #e9eef0;border-radius:9px;padding:10px 14px"><span style="color:#1f8a5b;flex:none">✓</span><div><b>Refund policy</b> updated to 45-day window — approved by Marta, published Tue</div><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#9aa6ab;flex:none">SLACK → DOC</span></div>
+          <div style="display:flex;align-items:center;gap:11px;font-size:12px;color:#48545a;background:#fff;border:1px solid #e9eef0;border-radius:9px;padding:10px 14px"><span style="color:#1f8a5b;flex:none">✓</span><div><b>SSO setup for Okta</b> drafted from Jira epic PLAT-291 — approved by Priya, published Wed</div><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#9aa6ab;flex:none">JIRA → NEW DOC</span></div>
+          <div style="display:flex;align-items:center;gap:11px;font-size:12px;color:#48545a;background:#fff;border:1px solid #e9eef0;border-radius:9px;padding:10px 14px"><span style="color:#1f8a5b;flex:none">✓</span><div><b>Legacy VPN guide</b> archived — 0 visits in 90 days, tool decommissioned</div><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#9aa6ab;flex:none">DRIFT WATCH</span></div>
+        </div>
+      </div>
+
+      <!-- right: drift watch feed -->
+      <div style="width:270px;flex:none;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#fff;border:1px solid #e3e9ea;border-radius:12px;padding:16px 18px">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">DRIFT WATCH · LIVE</div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:11px;font-size:11.5px;line-height:1.5;color:#48545a">
+            <div style="display:flex;gap:9px"><span style="width:7px;height:7px;border-radius:50%;background:#d97742;flex:none;margin-top:4px"></span><div>PR #486 touches rate limits — checking <b>API usage guide</b><div style="color:#9aa6ab;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;margin-top:2px">GITHUB · NOW</div></div></div>
+            <div style="display:flex;gap:9px"><span style="width:7px;height:7px;border-radius:50%;background:#9aa6ab;flex:none;margin-top:4px"></span><div>#people thread on hybrid days — no doc impact found<div style="color:#9aa6ab;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;margin-top:2px">SLACK · 24 MIN</div></div></div>
+            <div style="display:flex;gap:9px"><span style="width:7px;height:7px;border-radius:50%;background:#0e7f93;flex:none;margin-top:4px"></span><div>Salesforce: new enterprise tier — drafting pricing FAQ update<div style="color:#9aa6ab;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;margin-top:2px">SALESFORCE · 1 H</div></div></div>
+            <div style="display:flex;gap:9px"><span style="width:7px;height:7px;border-radius:50%;background:#9aa6ab;flex:none;margin-top:4px"></span><div>Zoom: platform sync transcript indexed<div style="color:#9aa6ab;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;margin-top:2px">ZOOM · 2 H</div></div></div>
+          </div>
+        </div>
+        <div style="background:#f0f7f8;border:1px solid #bcd6dc;border-radius:12px;padding:16px 18px">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#0e7f93">AGENT-READY CONTEXT</div>
+          <div style="margin-top:9px;font-size:11.5px;line-height:1.55;color:#2a4a52">Your support and sales agents pulled <b>318 answers</b> from the base this week — all from verified docs.</div>
+          <div style="margin-top:10px;font-size:11.5px;font-weight:600;color:#0e7f93">Manage agent access →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make the review queue clickable" · "show the drift banner inside the doc editor" · "digest as an email"</p>
+</section>
+
+<section class="dv-turn" id="t2" data-screen-label="Turn 2 — Sources &amp; Settings">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Console direction chosen — new screens: Data sources (<a class="dv-oid" href="#2a">2a</a>) and Settings (<a class="dv-oid" href="#2b">2b</a>)</span></div>
+<div class="dv-opts">
+
+<!-- ══════════════════ 2a DATA SOURCES ══════════════════ -->
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Data sources — connected tools, sync status, index health</div>
+<div class="dv-card" style="width:1150px">
+<div style="display:flex;height:840px;background:#fcfdfd;font-size:13px;color:#1c2429;font-family:'Instrument Sans',system-ui,sans-serif">
+
+  <!-- icon rail -->
+  <div style="width:54px;flex:none;background:#f2f5f6;border-right:1px solid #e3e9ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px">
+    <div style="width:28px;height:28px;border-radius:7px;background:#0e7f93;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;margin-bottom:8px">N</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90;font-size:14px" style-hover="background:#e8eeef">✦</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:3px;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:50%;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;background:#e0eaec;display:grid;place-items:center;color:#0e7f93"><span style="width:11px;height:8px;border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor;display:inline-block"></span></div>
+    <div style="margin-top:auto;width:28px;height:28px;border-radius:50%;background:#cfe0d6;color:#2c6e46;display:grid;place-items:center;font-size:10px;font-weight:600">DK</div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 24px;border-bottom:1px solid #e9eef0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#7c8b90;letter-spacing:.03em">
+      <span>ACME-CORP / SOURCES</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#1f8a5b;display:inline-block"></span>1,284 DOCS INDEXED</span>
+      <span>LAST FULL SYNC 6 MIN AGO</span>
+    </div>
+
+    <div style="flex:1;overflow:hidden;padding:28px 32px;display:flex;gap:28px">
+      <!-- left: connected sources -->
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <div style="font-size:21px;font-weight:600;letter-spacing:-.01em">Data sources</div>
+          <div style="font-size:12px;color:#7c8b90">8 connected · answers cite across all of them</div>
+          <div style="margin-left:auto;background:#0e7f93;color:#fff;border-radius:7px;font-size:12px;font-weight:600;padding:7px 14px" style-hover="background:#0b6a7b">＋ Connect source</div>
+        </div>
+
+        <div style="margin-top:18px;background:#fff;border:1px solid #e3e9ea;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edf1f2">
+            <div style="width:34px;height:34px;border-radius:8px;background:#eef3ee;color:#3c7a4a;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none">Dr</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Google Drive</div><div style="font-size:11.5px;color:#7c8b90;margin-top:1px">Shared drives: Handbook, Eng Specs · 412 docs</div></div>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#1f8a5b;background:#e8f5ee;border-radius:5px;padding:3px 8px;flex:none">SYNCED · 6 MIN</span>
+            <div style="width:34px;height:19px;border-radius:10px;background:#0e7f93;position:relative;flex:none"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edf1f2">
+            <div style="width:34px;height:34px;border-radius:8px;background:#f3eef5;color:#7a4a86;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none">Sl</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Slack</div><div style="font-size:11.5px;color:#7c8b90;margin-top:1px">#eng, #product, #people + 4 channels · answers only, never stored as docs</div></div>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#0e7f93;background:#e0eaec;border-radius:5px;padding:3px 8px;flex:none">LIVE</span>
+            <div style="width:34px;height:19px;border-radius:10px;background:#0e7f93;position:relative;flex:none"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edf1f2">
+            <div style="width:34px;height:34px;border-radius:8px;background:#eef0f4;color:#3a4453;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none">Gh</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">GitHub</div><div style="font-size:11.5px;color:#7c8b90;margin-top:1px">acme/platform wiki + READMEs · 168 docs</div></div>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#1f8a5b;background:#e8f5ee;border-radius:5px;padding:3px 8px;flex:none">SYNCED · 1 H</span>
+            <div style="width:34px;height:19px;border-radius:10px;background:#0e7f93;position:relative;flex:none"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edf1f2">
+            <div style="width:34px;height:34px;border-radius:8px;background:#eef2f0;color:#2c6e5a;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none">Zd</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Zendesk</div><div style="font-size:11.5px;color:#7c8b90;margin-top:1px">Macros + help-center articles · 96 docs</div></div>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#1f8a5b;background:#e8f5ee;border-radius:5px;padding:3px 8px;flex:none">SYNCED · 2 H</span>
+            <div style="width:34px;height:19px;border-radius:10px;background:#0e7f93;position:relative;flex:none"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edf1f2">
+            <div style="width:34px;height:34px;border-radius:8px;background:#eaf1f5;color:#2a5a7a;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none">Wp</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">WordPress</div><div style="font-size:11.5px;color:#7c8b90;margin-top:1px">help.acme.com — published pages &amp; posts · 74 docs</div></div>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#1f8a5b;background:#e8f5ee;border-radius:5px;padding:3px 8px;flex:none">SYNCED · 30 MIN</span>
+            <div style="width:34px;height:19px;border-radius:10px;background:#0e7f93;position:relative;flex:none"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edf1f2;background:#fafcfc">
+            <div style="width:34px;height:34px;border-radius:8px;background:#f0f0f4;color:#4a4a6a;display:grid;place-items:center;font-weight:700;font-size:14px;flex:none">⇪</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">File uploads</div><div style="font-size:11.5px;color:#7c8b90;margin-top:1px">PDF, DOCX, TXT, MD — parsed, chunked &amp; indexed · 38 files</div></div>
+            <span style="margin-left:auto;display:flex;gap:4px;flex:none"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#7c8b90;background:#f2f5f6;border-radius:4px;padding:2px 6px">PDF 21</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#7c8b90;background:#f2f5f6;border-radius:4px;padding:2px 6px">DOCX 11</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#7c8b90;background:#f2f5f6;border-radius:4px;padding:2px 6px">TXT 6</span></span>
+            <span style="font-size:11.5px;font-weight:600;color:#0e7f93;border:1px dashed #8fbcc6;border-radius:6px;padding:4px 12px;background:#fff;flex:none" style-hover="background:#e0eaec">⇪ Upload / drop files</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edf1f2">
+            <div style="width:34px;height:34px;border-radius:8px;background:#eef1f6;color:#3a5580;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none">Cf</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Confluence import</div><div style="font-size:11.5px;color:#7c8b90;margin-top:1px">One-time migration · 486 docs · completed Jun 12</div></div>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#7c8b90;background:#f2f5f6;border-radius:5px;padding:3px 8px;flex:none">IMPORTED</span>
+            <div style="width:34px;height:19px;border-radius:10px;background:#dde4e6;position:relative;flex:none"><span style="position:absolute;left:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;background:#fdf9f3">
+            <div style="width:34px;height:34px;border-radius:8px;background:#f4f0ea;color:#6e5a3a;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none">No</div>
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Notion import</div><div style="font-size:11.5px;color:#b0763a;margin-top:1px">Paused — authorization expired, 112 docs waiting</div></div>
+            <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#b0763a;background:#faf2e6;border-radius:5px;padding:3px 8px;flex:none">ACTION NEEDED</span>
+            <span style="font-size:11.5px;font-weight:600;color:#0e7f93;border:1px solid #bcd6dc;border-radius:6px;padding:4px 12px;background:#fff;flex:none" style-hover="background:#e0eaec">Re-authorize</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">AVAILABLE</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">＋ Jira</span>
+          <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">＋ Linear</span>
+          <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">＋ Figma</span>
+          <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">＋ Salesforce</span>
+          <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">＋ Zoom transcripts</span>
+          <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">＋ MS Teams</span>
+        </div>
+      </div>
+
+      <!-- right: index health -->
+      <div style="width:270px;flex:none;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#fff;border:1px solid #e3e9ea;border-radius:12px;padding:16px 18px">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">INDEX HEALTH</div>
+          <div style="margin-top:12px;display:flex;align-items:baseline;gap:6px"><span style="font-size:26px;font-weight:700;letter-spacing:-.02em">1,284</span><span style="font-size:11.5px;color:#7c8b90">docs indexed</span></div>
+          <div style="margin-top:10px;height:6px;border-radius:3px;background:#eef1f2;overflow:hidden;display:flex">
+            <div style="width:32%;height:100%;background:#0e7f93"></div>
+            <div style="width:34%;height:100%;background:#58b0a4"></div>
+            <div style="width:13%;height:100%;background:#3a5580"></div>
+            <div style="width:8%;height:100%;background:#7a4a86"></div>
+            <div style="width:6%;height:100%;background:#8aa3c0"></div>
+            <div style="width:7%;height:100%;background:#c8ced2"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px;font-size:11px;color:#48545a">
+            <div style="display:flex;gap:7px;align-items:center"><span style="width:8px;height:8px;border-radius:2px;background:#0e7f93;flex:none"></span>Drive 412<span style="margin-left:auto;color:#9aa6ab">32%</span></div>
+            <div style="display:flex;gap:7px;align-items:center"><span style="width:8px;height:8px;border-radius:2px;background:#58b0a4;flex:none"></span>Confluence 440<span style="margin-left:auto;color:#9aa6ab">34%</span></div>
+            <div style="display:flex;gap:7px;align-items:center"><span style="width:8px;height:8px;border-radius:2px;background:#3a5580;flex:none"></span>GitHub 168<span style="margin-left:auto;color:#9aa6ab">13%</span></div>
+            <div style="display:flex;gap:7px;align-items:center"><span style="width:8px;height:8px;border-radius:2px;background:#7a4a86;flex:none"></span>Zendesk 96<span style="margin-left:auto;color:#9aa6ab">8%</span></div>
+            <div style="display:flex;gap:7px;align-items:center"><span style="width:8px;height:8px;border-radius:2px;background:#8aa3c0;flex:none"></span>WordPress 74<span style="margin-left:auto;color:#9aa6ab">6%</span></div>
+            <div style="display:flex;gap:7px;align-items:center"><span style="width:8px;height:8px;border-radius:2px;background:#c8ced2;flex:none"></span>Uploads + native 94<span style="margin-left:auto;color:#9aa6ab">7%</span></div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e3e9ea;border-radius:12px;padding:16px 18px">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">SYNC LOG</div>
+          <div style="margin-top:11px;display:flex;flex-direction:column;gap:9px;font-size:11.5px;line-height:1.45;color:#48545a">
+            <div><b>Drive</b> · 12 docs updated, 1 removed<div style="color:#9aa6ab">10:42 — 6 min ago</div></div>
+            <div><b>Slack</b> · 3 answers cited #eng threads<div style="color:#9aa6ab">10:31</div></div>
+            <div><b>Uploads</b> · security-whitepaper.pdf parsed → indexed<div style="color:#9aa6ab">10:12</div></div>
+            <div><b>WordPress</b> · 3 help-center posts re-indexed<div style="color:#9aa6ab">10:05</div></div>
+            <div><b>GitHub</b> · wiki page "Deploy checklist" re-indexed<div style="color:#9aa6ab">09:58</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════ 2b SETTINGS ══════════════════ -->
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Settings — AI &amp; answers, verification policy, auto-organization</div>
+<div class="dv-card" style="width:1150px">
+<div style="display:flex;height:780px;background:#fcfdfd;font-size:13px;color:#1c2429;font-family:'Instrument Sans',system-ui,sans-serif">
+
+  <!-- icon rail -->
+  <div style="width:54px;flex:none;background:#f2f5f6;border-right:1px solid #e3e9ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px">
+    <div style="width:28px;height:28px;border-radius:7px;background:#0e7f93;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;margin-bottom:8px">N</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90;font-size:14px" style-hover="background:#e8eeef">✦</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:3px;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:50%;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:11px;height:8px;border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor;display:inline-block"></span></div>
+    <div style="margin-top:auto;width:28px;height:28px;border-radius:50%;background:#cfe0d6;color:#2c6e46;display:grid;place-items:center;font-size:10px;font-weight:600">DK</div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 24px;border-bottom:1px solid #e9eef0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#7c8b90;letter-spacing:.03em">
+      <span>ACME-CORP / SETTINGS</span>
+      <span style="margin-left:auto">PLAN: ENTERPRISE</span>
+      <span>48 MEMBERS</span>
+    </div>
+
+    <div style="flex:1;overflow:hidden;display:flex">
+      <!-- settings nav -->
+      <div style="width:210px;flex:none;border-right:1px solid #e9eef0;padding:24px 12px;display:flex;flex-direction:column;gap:1px">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.1em;color:#9aa6ab;padding:0 10px 8px">WORKSPACE</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">General</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">Members &amp; roles</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">Collections</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.1em;color:#9aa6ab;padding:16px 10px 8px">INTELLIGENCE</div>
+        <div style="padding:7px 10px;border-radius:7px;background:#e0eaec;color:#0b6a7b;font-weight:600">AI &amp; answers</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">Verification policy</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">Auto-organization</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.1em;color:#9aa6ab;padding:16px 10px 8px">ADMIN</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">Security &amp; SSO</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">Audit log</div>
+        <div style="padding:7px 10px;border-radius:7px;color:#48545a" style-hover="background:#f2f5f6">Billing</div>
+      </div>
+
+      <!-- panel -->
+      <div style="flex:1;min-width:0;padding:28px 36px;overflow:hidden">
+        <div style="font-size:19px;font-weight:600;letter-spacing:-.01em">AI &amp; answers</div>
+        <div style="margin-top:3px;font-size:12.5px;color:#7c8b90">How Nonaki answers questions and what it's allowed to cite.</div>
+
+        <div style="margin-top:20px;max-width:640px;background:#fff;border:1px solid #e3e9ea;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid #edf1f2">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Answer only from verified docs</div><div style="font-size:11.5px;color:#7c8b90;margin-top:2px;line-height:1.45">Unverified docs are searchable but never cited in answers.</div></div>
+            <div style="margin-left:auto;width:34px;height:19px;border-radius:10px;background:#0e7f93;position:relative;flex:none"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid #edf1f2">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Require a citation for every claim</div><div style="font-size:11.5px;color:#7c8b90;margin-top:2px;line-height:1.45">Nonaki says "I don't know" rather than answering without sources.</div></div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex:none"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#7c8b90;background:#f2f5f6;border-radius:4px;padding:2px 6px">POLICY-LOCKED</span><div style="width:34px;height:19px;border-radius:10px;background:#0e7f93;opacity:.55;position:relative"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid #edf1f2">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Use meeting transcripts in answers</div><div style="font-size:11.5px;color:#7c8b90;margin-top:2px;line-height:1.45">Cite Zoom/Teams transcripts directly, before they become docs.</div></div>
+            <div style="margin-left:auto;width:34px;height:19px;border-radius:10px;background:#dde4e6;position:relative;flex:none"><span style="position:absolute;left:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Default answer scope</div><div style="font-size:11.5px;color:#7c8b90;margin-top:2px;line-height:1.45">Which collections the ask box searches unless the user narrows it.</div></div>
+            <span style="margin-left:auto;font-size:12px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff;flex:none" style-hover="border-color:#0e7f93">All collections ⌄</span>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">VERIFICATION POLICY</div>
+        <div style="margin-top:8px;max-width:640px;background:#fff;border:1px solid #e3e9ea;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid #edf1f2">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Verification expires after</div><div style="font-size:11.5px;color:#7c8b90;margin-top:2px;line-height:1.45">Owners are pinged to re-attest; expired docs lose the ✓ badge.</div></div>
+            <div style="margin-left:auto;display:flex;gap:6px;flex:none">
+              <span style="font-size:11.5px;color:#7c8b90;border:1px solid #dde4e6;border-radius:6px;padding:5px 11px">30 d</span>
+              <span style="font-size:11.5px;font-weight:600;color:#0b6a7b;background:#e0eaec;border:1px solid #0e7f93;border-radius:6px;padding:5px 11px">90 d</span>
+              <span style="font-size:11.5px;color:#7c8b90;border:1px solid #dde4e6;border-radius:6px;padding:5px 11px">180 d</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Who can verify docs</div></div>
+            <span style="margin-left:auto;font-size:12px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff;flex:none" style-hover="border-color:#0e7f93">Collection owners ⌄</span>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90">AUTO-ORGANIZATION</div>
+        <div style="margin-top:8px;max-width:640px;background:#fff;border:1px solid #e3e9ea;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid #edf1f2">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Draft docs from meeting notes</div><div style="font-size:11.5px;color:#7c8b90;margin-top:2px;line-height:1.45">Drafts always wait for human review — nothing publishes itself.</div></div>
+            <div style="margin-left:auto;width:34px;height:19px;border-radius:10px;background:#0e7f93;position:relative;flex:none"><span style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px">
+            <div style="min-width:0"><div style="font-weight:600;font-size:13px">Flag docs as stale after</div></div>
+            <span style="margin-left:auto;font-size:12px;color:#48545a;border:1px solid #dde4e6;border-radius:7px;padding:6px 12px;background:#fff;flex:none" style-hover="border-color:#0e7f93">6 months ⌄</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make it a clickable prototype" · "add the doc editor + AI assistant screen" · "design the members &amp; roles panel"</p>
+</section>
+
+<section class="dv-turn" id="t1" data-screen-label="Turn 1 — Chosen direction">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Chosen direction: <a class="dv-oid" href="#1b">1b</a> Console — command-first, teal, mono details</span></div>
+<div class="dv-opts">
+
+<!-- ══════════════════ 1b CONSOLE ══════════════════ -->
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Console — command-first · teal · the ask box IS the home, sourced answers up front</div>
+<div class="dv-card" style="width:1150px">
+<div style="display:flex;height:730px;background:#fcfdfd;font-size:13px;color:#1c2429;font-family:'Instrument Sans',system-ui,sans-serif">
+
+  <!-- icon rail -->
+  <div style="width:54px;flex:none;background:#f2f5f6;border-right:1px solid #e3e9ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px">
+    <div style="width:28px;height:28px;border-radius:7px;background:#0e7f93;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;margin-bottom:8px">N</div>
+    <div style="width:34px;height:34px;border-radius:8px;background:#e0eaec;display:grid;place-items:center;color:#0e7f93;font-size:14px">✦</div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:3px;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:10px;height:10px;border:1.5px solid currentColor;border-radius:50%;display:inline-block"></span></div>
+    <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#7c8b90" style-hover="background:#e8eeef"><span style="width:11px;height:8px;border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor;display:inline-block"></span></div>
+    <div style="margin-top:auto;width:28px;height:28px;border-radius:50%;background:#cfe0d6;color:#2c6e46;display:grid;place-items:center;font-size:10px;font-weight:600">DK</div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <!-- top strip -->
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 24px;border-bottom:1px solid #e9eef0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#7c8b90;letter-spacing:.03em">
+      <span>ACME-CORP / KNOWLEDGE</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#1f8a5b;display:inline-block"></span>1,284 DOCS INDEXED</span>
+      <span>87% VERIFIED</span>
+      <span style="color:#b0763a">23 STALE</span>
+    </div>
+
+    <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;align-items:center;padding:44px 24px 0">
+      <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.14em;color:#0e7f93">NONAKI / ASK</div>
+      <div style="margin-top:10px;font-size:29px;font-weight:600;letter-spacing:-.015em">What do you need to know?</div>
+
+      <div style="margin-top:22px;width:680px;max-width:100%;background:#fff;border:1.5px solid #0e7f93;border-radius:12px;box-shadow:0 4px 16px rgba(14,127,147,.10);padding:16px 18px">
+        <div style="font-size:14.5px;color:#1c2429">How do we handle customer data deletion requests?<span style="display:inline-block;width:2px;height:16px;background:#0e7f93;margin-left:2px;vertical-align:-3px"></span></div>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:8px">
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#7c8b90;border:1px solid #e3e9ea;border-radius:5px;padding:3px 7px">SCOPE: ALL COLLECTIONS ⌄</span>
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#7c8b90;border:1px solid #e3e9ea;border-radius:5px;padding:3px 7px">VERIFIED ONLY</span>
+          <span style="margin-left:auto;display:flex;gap:8px;align-items:center"><span style="font-size:12px;font-weight:600;color:#0e7f93;border:1px solid #bcd6dc;border-radius:7px;padding:6px 14px;background:#fff;display:inline-flex;align-items:center;gap:6px" style-hover="background:#e0eaec"><span style="width:9px;height:9px;border:1.5px solid currentColor;border-radius:50%;display:inline-block;position:relative"></span>Search</span><span style="background:#0e7f93;color:#fff;border-radius:7px;font-size:12px;font-weight:600;padding:7px 16px" style-hover="background:#0b6a7b">Ask ↵</span></span>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;width:680px;max-width:100%;display:flex;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:15px;padding:5px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">What changed in the Q3 roadmap?</span>
+        <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:15px;padding:5px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">Who owns SSO integration?</span>
+        <span style="font-size:11.5px;color:#48545a;border:1px solid #dde4e6;border-radius:15px;padding:5px 12px;background:#fff" style-hover="border-color:#0e7f93;color:#0e7f93">Summarize yesterday's platform sync</span>
+      </div>
+
+      <!-- answer preview -->
+      <div style="margin-top:26px;width:820px;max-width:100%;background:#fff;border:1px solid #e3e9ea;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(20,40,45,.05)">
+        <div style="display:flex;align-items:center;gap:8px;padding:11px 18px;border-bottom:1px solid #edf1f2;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#7c8b90;letter-spacing:.05em">
+          <span style="color:#0e7f93">● ANSWER</span><span>FROM 3 SOURCES</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:5px">CONFIDENCE<span style="display:inline-flex;gap:2px"><span style="width:14px;height:5px;background:#0e7f93;border-radius:2px"></span><span style="width:14px;height:5px;background:#0e7f93;border-radius:2px"></span><span style="width:14px;height:5px;background:#0e7f93;border-radius:2px"></span><span style="width:14px;height:5px;background:#dde4e6;border-radius:2px"></span></span></span>
+        </div>
+        <div style="display:flex">
+          <div style="flex:1;min-width:0;padding:16px 20px;font-size:13px;line-height:1.65;color:#2a343a">
+            Deletion requests go through the <b>privacy queue in Zendesk</b>, tagged <span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f2f5f6;border-radius:4px;padding:1px 5px">gdpr-delete</span>. Legal confirms identity within 5 business days<span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#0e7f93;background:#e0eaec;border-radius:4px;padding:0 4px;margin:0 2px">1</span>, then engineering runs the erasure job across primary DB and backups within 30 days<span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#0e7f93;background:#e0eaec;border-radius:4px;padding:0 4px;margin:0 2px">2</span>. Enterprise contracts may carry shorter SLAs — check the account addendum<span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#0e7f93;background:#e0eaec;border-radius:4px;padding:0 4px;margin:0 2px">3</span>.
+          </div>
+          <div style="width:250px;flex:none;border-left:1px solid #edf1f2;padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:#fafcfc">
+            <div style="display:flex;gap:8px;font-size:11.5px;line-height:1.4"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#0e7f93;flex:none">1</span><div><b>Data deletion SOP</b><div style="color:#7c8b90;display:flex;gap:5px;margin-top:1px"><span style="color:#1f8a5b">✓ verified</span>· Security</div></div></div>
+            <div style="display:flex;gap:8px;font-size:11.5px;line-height:1.4"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#0e7f93;flex:none">2</span><div><b>Erasure job runbook</b><div style="color:#7c8b90;display:flex;gap:5px;margin-top:1px"><span style="color:#1f8a5b">✓ verified</span>· Engineering</div></div></div>
+            <div style="display:flex;gap:8px;font-size:11.5px;line-height:1.4"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#0e7f93;flex:none">3</span><div><b>Enterprise DPA terms</b><div style="color:#7c8b90;display:flex;gap:5px;margin-top:1px"><span style="color:#b0763a">review due</span>· Legal</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bottom auto-organize strip -->
+    <div style="border-top:1px solid #e9eef0;background:#f7fafa;padding:13px 24px;display:flex;align-items:center;gap:14px">
+      <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;color:#7c8b90;flex:none">AUTO-ORGANIZED</span>
+      <div style="font-size:12px;color:#48545a"><b>Platform sync — Jul 1</b> notes → drafted <b>"Rate limiter rollout plan"</b> in Engineering</div>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <span style="font-size:11.5px;font-weight:600;color:#0e7f93;border:1px solid #bcd6dc;border-radius:6px;padding:4px 12px;background:#fff" style-hover="background:#e0eaec">Review draft</span>
+        <span style="font-size:11.5px;color:#7c8b90;padding:4px 6px">Dismiss</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Source {
+  id            String      @id @default(cuid())
+  type          String // "wordpress" | "github" | "upload"
+  name          String
+  config        String? // JSON: wordpress { url } · github { repo, branch, token }
+  status        String      @default("connected") // connected | syncing | error
+  enabled       Boolean     @default(true)
+  lastSyncAt    DateTime?
+  lastSyncError String? // why the last sync failed (cleared on success)
+  syncInterval  String      @default("manual") // manual | hourly | daily | weekly
+  nextSyncAt    DateTime? // when the scheduler should sync next (null = manual only)
+  createdAt     DateTime    @default(now())
+  documents     Document[]
+  syncLogs      SyncLog[]
+  importJobs    ImportJob[]
+
+  @@index([nextSyncAt])
+}
+
+model ImportJob {
+  id        String   @id @default(cuid())
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  kind      String   @default("import") // import | sync
+  status    String   @default("running") // running | paused | cancelled | completed | error
+  total     Int      @default(0)
+  cursor    Int      @default(0) // index of the next item to process
+  imported  Int      @default(0)
+  proposed  Int      @default(0)
+  skipped   Int      @default(0)
+  failed    Int      @default(0)
+  items      String? // JSON array of item refs to process
+  current    String? // title of the item being processed
+  error      String?
+  trigger    String   @default("manual") // manual | schedule | retry
+  retryOfId  String? // job this one is a retry of
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt // doubles as the runner heartbeat
+  finishedAt DateTime?
+
+  @@index([status, updatedAt])
+  @@index([createdAt])
+}
+
+model Document {
+  id         String     @id @default(cuid())
+  sourceId   String
+  source     Source     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  externalId String? // WP post id or upload filename
+  title      String
+  content    String // current indexed content (plain text)
+  excerpt    String?
+  url        String?
+  kind       String     @default("doc") // post | page | pdf | docx | txt | md
+  status     String     @default("indexed") // indexed | archived
+  version    Int        @default(1)
+  chunkCount Int        @default(0)
+  verified   Boolean    @default(true)
+  archivedAt DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  proposals  Proposal[]
+  versions   DocumentVersion[]
+
+  @@unique([sourceId, externalId])
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Int // the version number this snapshot WAS (before it got replaced)
+  title      String
+  content    String
+  origin     String   @default("edit") // edit | proposal | sync | restore
+  createdAt  DateTime @default(now())
+
+  @@unique([documentId, version])
+  @@index([documentId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // source.connected | import.started | document.deleted | proposal.approved | setting.changed | …
+  entityType String? // source | document | proposal | importJob | setting
+  entityId   String?
+  summary    String // human-readable one-liner
+  detail     String? // JSON extras
+  actor      String   @default("system") // user email or "system" (background jobs)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([entityType, entityId])
+}
+
+model Proposal {
+  id         String    @id @default(cuid())
+  documentId String
+  document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  type       String    @default("update") // update | archive
+  origin     String    @default("sync") // sync | assistant | manual
+  reason     String?
+  oldContent String
+  newContent String
+  newTitle   String?
+  status     String    @default("pending") // pending | approved | rejected
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  sourceId  String?
+  source    Source?  @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  message   String
+  level     String   @default("info") // info | warn | error
+  createdAt DateTime @default(now())
+}
+
+model AskLog {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String?
+  citations String? // JSON array of cited chunks
+  mode      String   @default("ask") // ask | search
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model AiUsage {
+  id           String   @id @default(cuid())
+  provider     String // groq | openai | anthropic | deepseek
+  model        String
+  operation    String // ask | embed-ask | assistant-draft | inline-edit | messenger
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  estimated    Boolean  @default(false) // true when the provider didn't report usage and we estimated
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([provider, createdAt])
+}
