@@ -1,6 +1,6 @@
 # Nonaki — AI Knowledge Base
 
-A self-maintaining RAG (Retrieval-Augmented Generation) knowledge base, built from the Nonaki design.
+A self-maintaining RAG (Retrieval-Augmented Generation) knowledge base.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/prappo/nonaki-ai-knowledge-base&env=DATABASE_URL,DIRECT_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,WEAVIATE_URL,WEAVIATE_API_KEY,GROQ_API_KEY&envDescription=Required%20credentials%20for%20Supabase%2C%20Weaviate%20and%20Groq%20%E2%80%94%20see%20.env.example&envLink=https://github.com/prappo/nonaki-ai-knowledge-base/blob/main/.env.example)
 
