@@ -1,0 +1,12 @@
+# Single domain, path-based routing — /auth/v1/* goes to Kong (which itself
+# strips that prefix before forwarding to Auth), everything else to the app.
+# This keeps NEXT_PUBLIC_SUPABASE_URL identical to the app's own public URL
+# instead of needing a second subdomain/cert just for Auth.
+{$DOMAIN} {
+	handle /auth/v1/* {
+		reverse_proxy kong:8000
+	}
+	handle {
+		reverse_proxy app:3000
+	}
+}

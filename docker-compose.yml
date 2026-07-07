@@ -37,7 +37,7 @@ services:
       API_EXTERNAL_URL: http://localhost:8000
       GOTRUE_SITE_URL: http://localhost:3000
       GOTRUE_URI_ALLOW_LIST: "*"
-      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_DISABLE_SIGNUP: ${GOTRUE_DISABLE_SIGNUP:-false}
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:local-gotrue-db-password@postgres:5432/postgres
       GOTRUE_JWT_SECRET: ${JWT_SECRET}

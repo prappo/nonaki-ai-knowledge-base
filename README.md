@@ -99,38 +99,54 @@ Auth), `auth` (`supabase/gotrue`), `kong` (routes `/auth/v1/*` to Auth,
 matching what the app's Supabase client expects), `weaviate`, and
 `t2v-transformers` (the local embedding model).
 
-## Deploy on a VPS
+## Go to production
 
-The app image is also published on Docker Hub as
-[`prappo/nonaki-ai-knowledge-base`](https://hub.docker.com/r/prappo/nonaki-ai-knowledge-base),
-and `docker-compose.yml`'s `app` service references it directly — so on any
-VPS with Docker installed, cloning this repo and running the same Docker
-setup as above (`docker compose --env-file .env.docker up -d`) brings up the
-whole stack there too.
+Everything above is fine for your own machine, but three things need to
+change before this is reachable from the internet: real TLS, secrets that
+aren't sitting in a public GitHub repo, and not exposing Postgres/Weaviate's
+raw ports. `docker-compose.prod.yml` is an overlay that handles all three —
+it adds a [Caddy](https://caddyserver.com) reverse proxy (automatic
+Let's Encrypt cert, renews itself) and removes every other service's direct
+port publishing, so only Caddy's 80/443 are reachable from outside.
 
-One thing that needs attention before going public: `NEXT_PUBLIC_SUPABASE_URL`
-gets baked into the browser bundle at *build* time, and the image on Docker
-Hub was built with it set to `http://localhost:8000` — fine for your own
-machine, meaningless from another browser hitting your VPS's public
-IP/domain. Two ways to handle it:
+**1. Point a domain at the server**, then generate secrets that were never
+committed anywhere:
 
-- **Simplest — build on the VPS itself** (skips the Docker Hub image
-  entirely, no mismatch possible):
-  ```bash
-  docker compose --env-file .env.docker up -d --build
-  ```
-- **Or keep pulling from Docker Hub**, but rebuild and push a new tag first
-  with the correct public URL baked in:
-  ```bash
-  docker build -t prappo/nonaki-ai-knowledge-base:latest \
-    --build-arg NEXT_PUBLIC_SUPABASE_URL=http://YOUR_VPS_IP_OR_DOMAIN:8000 \
-    --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$(grep ANON_KEY .env.docker | cut -d'"' -f2)" .
-  docker push prappo/nonaki-ai-knowledge-base:latest
-  ```
-  Also update `GOTRUE_SITE_URL` and `API_EXTERNAL_URL` in `docker-compose.yml`
-  the same way, and publish Kong's port (8000) so browsers can actually
-  reach it — put a reverse proxy with a real domain + TLS in front for
-  anything beyond a quick test.
+```bash
+cp .env.docker.example .env.docker
+# delete the JWT_SECRET/ANON_KEY lines .env.docker.example ships with, then:
+./docker/generate-secrets.sh >> .env.docker
+echo 'DOMAIN=your-domain.com' >> .env.docker
+# fill in an AI provider key (e.g. GROQ_API_KEY) same as before
+```
+
+**2. Rebuild the app image with that domain baked in** — `NEXT_PUBLIC_SUPABASE_URL`
+is inlined into the browser bundle at build time, so this step can't be
+skipped even though the compose overlay also sets it at runtime:
+
+```bash
+ANON_KEY=$(grep '^ANON_KEY=' .env.docker | cut -d'"' -f2)
+docker build -t prappo/nonaki-ai-knowledge-base:latest \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="https://your-domain.com" \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY" .
+```
+
+**3. Bring up the full stack with the production overlay:**
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  --env-file .env.docker up -d
+```
+
+Auth and the app both route through Caddy on the same domain — `/auth/v1/*`
+goes to Kong, everything else to the app (see `docker/Caddyfile`) — so there's
+only one cert to manage, no separate Auth subdomain needed.
+
+**After it's up:** sign up once at `https://your-domain.com/login`, then set
+`GOTRUE_DISABLE_SIGNUP=true` in `.env.docker` and re-run step 3 to lock out
+further signups. Also worth setting up before relying on this for real data:
+a periodic `pg_dump` of the `postgres` volume and a backup of the
+`weaviate_data` volume — neither is automated here.
 
 ## Flow
 

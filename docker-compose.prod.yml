@@ -1,0 +1,48 @@
+# Production overlay — adds TLS via Caddy and stops publishing raw ports
+# (Postgres, Weaviate, Kong, the app) directly to the internet, now that
+# Caddy is the only thing meant to be reachable from outside.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     --env-file .env.docker up -d
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+      - kong
+
+  postgres:
+    ports: []
+  auth:
+    ports: []
+    environment:
+      API_EXTERNAL_URL: https://${DOMAIN}
+      GOTRUE_SITE_URL: https://${DOMAIN}
+  kong:
+    ports: []
+  weaviate:
+    ports: []
+  t2v-transformers:
+    ports: []
+  app:
+    ports: []
+    environment:
+      # NEXT_PUBLIC_SUPABASE_URL below only affects server-side reads —
+      # the browser bundle's copy is baked in at build time (see README
+      # → "Go to production"), this alone will NOT fix a mismatched build.
+      NEXT_PUBLIC_SUPABASE_URL: https://${DOMAIN}
+
+volumes:
+  caddy_data:
+  caddy_config:
