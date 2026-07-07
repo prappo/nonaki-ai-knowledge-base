@@ -99,20 +99,38 @@ Auth), `auth` (`supabase/gotrue`), `kong` (routes `/auth/v1/*` to Auth,
 matching what the app's Supabase client expects), `weaviate`, and
 `t2v-transformers` (the local embedding model).
 
-## Self-host the same stack on Render
+## Deploy on a VPS
 
-`render.yaml` deploys the equivalent stack as separate Render services
-instead of Docker Compose containers — same six pieces (app, Postgres, Auth,
-Kong, Weaviate, embeddings), still with only the AI provider call leaving
-the network. Two of them (`docker/kong-render/`, `docker/weaviate-render/`)
-are thin wrappers around the stock `kong`/`weaviate` images because Render
-can't hand a service a static config file referencing another service's
-address — the wrapper composes it from env vars at container start instead.
+The app image is also published on Docker Hub as
+[`prappo/nonaki-ai-knowledge-base`](https://hub.docker.com/r/prappo/nonaki-ai-knowledge-base),
+and `docker-compose.yml`'s `app` service references it directly — so on any
+VPS with Docker installed, cloning this repo and running the same Docker
+setup as above (`docker compose --env-file .env.docker up -d`) brings up the
+whole stack there too.
 
-Deploy: connect this repo in the Render dashboard as a Blueprint, then set
-an AI provider key (e.g. `GROQ_API_KEY`) on the `nonaki-app` service — it's
-excluded from the blueprint itself. See the comments in `render.yaml` for
-the couple of things worth double-checking on first deploy.
+One thing that needs attention before going public: `NEXT_PUBLIC_SUPABASE_URL`
+gets baked into the browser bundle at *build* time, and the image on Docker
+Hub was built with it set to `http://localhost:8000` — fine for your own
+machine, meaningless from another browser hitting your VPS's public
+IP/domain. Two ways to handle it:
+
+- **Simplest — build on the VPS itself** (skips the Docker Hub image
+  entirely, no mismatch possible):
+  ```bash
+  docker compose --env-file .env.docker up -d --build
+  ```
+- **Or keep pulling from Docker Hub**, but rebuild and push a new tag first
+  with the correct public URL baked in:
+  ```bash
+  docker build -t prappo/nonaki-ai-knowledge-base:latest \
+    --build-arg NEXT_PUBLIC_SUPABASE_URL=http://YOUR_VPS_IP_OR_DOMAIN:8000 \
+    --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$(grep ANON_KEY .env.docker | cut -d'"' -f2)" .
+  docker push prappo/nonaki-ai-knowledge-base:latest
+  ```
+  Also update `GOTRUE_SITE_URL` and `API_EXTERNAL_URL` in `docker-compose.yml`
+  the same way, and publish Kong's port (8000) so browsers can actually
+  reach it — put a reverse proxy with a real domain + TLS in front for
+  anything beyond a quick test.
 
 ## Flow
 

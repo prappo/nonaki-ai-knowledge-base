@@ -88,6 +88,11 @@ services:
       ENABLE_CUDA: "0"
 
   app:
+    # `docker compose up` without --build pulls this from Docker Hub;
+    # `docker compose up --build` builds locally and tags it the same,
+    # for iterating on code changes (see README → "Deploy on a VPS" for the
+    # build-arg caveat if this is going out to a real domain, not localhost).
+    image: prappo/nonaki-ai-knowledge-base:latest
     build:
       context: .
       args:
