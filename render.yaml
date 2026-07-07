@@ -1,0 +1,184 @@
+# Fully self-hosted stack on Render — the same shape as docker-compose.yml,
+# using custom "-render" image variants for Kong and Weaviate where a static
+# config file or env var needed to be composed from a Render-only address
+# (see docker/kong-render/ and docker/weaviate-render/).
+#
+# NOT YET LIVE-TESTED against a real Render account (this environment has no
+# Render access) — the pieces below were each verified independently against
+# real containers, but the full blueprint hasn't been deployed end-to-end.
+# Two specific things to double-check on first deploy:
+#   1. Render's docs describe automatic port detection for web services
+#      ("usually able to detect and use it") — PORT is set explicitly below
+#      as a hint, but if either nonaki-app or nonaki-kong fails healthchecks,
+#      this is the first thing to check.
+#   2. `fromService` may or may not require a `type` sub-field depending on
+#      Render's current schema — included below to be safe; remove if Render
+#      rejects it.
+#
+# The AI provider call (Groq/OpenAI/Anthropic/DeepSeek) is the only thing
+# that leaves this stack — same as the local Docker setup.
+
+databases:
+  - name: nonaki-db
+    databaseName: nonaki
+    user: nonaki
+    plan: basic-1gb # Render's free Postgres plan auto-expires after 30 days — use a paid plan for anything long-lived
+    postgresMajorVersion: "16"
+
+services:
+  - name: nonaki-auth
+    type: pserv
+    runtime: image
+    image:
+      url: docker.io/supabase/gotrue:v2.192.0
+    envVars:
+      - key: GOTRUE_API_HOST
+        value: "0.0.0.0"
+      - key: GOTRUE_API_PORT
+        value: "9999"
+      - key: PORT
+        value: "9999"
+      - key: API_EXTERNAL_URL
+        value: https://nonaki-kong.onrender.com # update if Render assigns a different hostname
+      - key: GOTRUE_SITE_URL
+        value: https://nonaki-app.onrender.com # update if Render assigns a different hostname
+      - key: GOTRUE_URI_ALLOW_LIST
+        value: "*"
+      - key: GOTRUE_DISABLE_SIGNUP
+        value: "false"
+      - key: GOTRUE_DB_DRIVER
+        value: postgres
+      - key: GOTRUE_DB_DATABASE_URL
+        fromDatabase:
+          name: nonaki-db
+          property: connectionString
+      # Must match NEXT_PUBLIC_SUPABASE_ANON_KEY on nonaki-app below — that
+      # key is a JWT signed with this exact secret (see .env.docker.example).
+      - key: GOTRUE_JWT_SECRET
+        value: "c635eed62d27a1d5c8598dc7e6f28765268fc5e272734f0af053bd9bd734d1f8"
+      - key: GOTRUE_JWT_EXP
+        value: "3600"
+      - key: GOTRUE_JWT_AUD
+        value: authenticated
+      - key: GOTRUE_JWT_DEFAULT_GROUP_NAME
+        value: authenticated
+      - key: GOTRUE_JWT_ADMIN_ROLES
+        value: service_role
+      # No SMTP server here — new signups are confirmed immediately.
+      - key: GOTRUE_MAILER_AUTOCONFIRM
+        value: "true"
+
+  - name: nonaki-kong
+    type: web
+    runtime: image
+    image:
+      url: docker.io/prappo/nonaki-kong-render:latest
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: KONG_DATABASE
+        value: "off"
+      - key: KONG_ADMIN_LISTEN
+        value: "off"
+      - key: AUTH_INTERNAL_PORT
+        value: "9999"
+      - key: AUTH_INTERNAL_HOST
+        fromService:
+          type: pserv
+          name: nonaki-auth
+          property: host
+
+  - name: nonaki-embeddings
+    type: pserv
+    runtime: image
+    image:
+      url: docker.io/semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: ENABLE_CUDA
+        value: "0"
+
+  - name: nonaki-weaviate
+    type: pserv
+    runtime: image
+    image:
+      url: docker.io/prappo/nonaki-weaviate-render:latest
+    disk:
+      name: weaviate-data
+      mountPath: /var/lib/weaviate
+      sizeGB: 10
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: QUERY_DEFAULTS_LIMIT
+        value: "25"
+      - key: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+        value: "true"
+      - key: PERSISTENCE_DATA_PATH
+        value: /var/lib/weaviate
+      - key: ENABLE_MODULES
+        value: text2vec-transformers
+      - key: DEFAULT_VECTORIZER_MODULE
+        value: text2vec-transformers
+      - key: CLUSTER_HOSTNAME
+        value: node1
+      - key: EMBEDDINGS_INTERNAL_PORT
+        value: "8080"
+      - key: EMBEDDINGS_INTERNAL_HOST
+        fromService:
+          type: pserv
+          name: nonaki-embeddings
+          property: host
+
+  - name: nonaki-app
+    type: web
+    runtime: image
+    image:
+      url: docker.io/prappo/nonaki-ai-knowledge-base:render
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nonaki-db
+          property: connectionString
+      - key: DIRECT_URL
+        fromDatabase:
+          name: nonaki-db
+          property: connectionString
+      # Baked into the client bundle at build time — this image was built
+      # with these exact values (see docker/kong-render note on hostnames).
+      # If Render assigns nonaki-kong a different public hostname, the app
+      # image needs rebuilding with the corrected value.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://nonaki-kong.onrender.com
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6Im5vbmFraS1sb2NhbCIsImlhdCI6MTc5ODc2MTYwMCwiZXhwIjoyMTE0MTIxNjAwfQ.JF5qUbELxQPqS8eDlswyGuxyYrsr3X12TbyLG5TE5X0"
+      - key: SUPABASE_INTERNAL_PORT
+        value: "8000"
+      - key: SUPABASE_INTERNAL_HOST
+        fromService:
+          type: web
+          name: nonaki-kong
+          property: host
+      - key: WEAVIATE_MODE
+        value: local
+      - key: WEAVIATE_PORT
+        value: "8080"
+      - key: WEAVIATE_GRPC_PORT
+        value: "50051"
+      - key: WEAVIATE_HOST
+        fromService:
+          type: pserv
+          name: nonaki-weaviate
+          property: host
+      - key: DATA_SOURCE_DISABLED
+        value: "false"
+      # At least one AI provider key is required — set these in the Render
+      # dashboard after the blueprint deploys (sync: false keeps them out of
+      # this file and off of any git history).
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile

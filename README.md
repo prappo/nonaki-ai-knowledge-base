@@ -99,6 +99,21 @@ Auth), `auth` (`supabase/gotrue`), `kong` (routes `/auth/v1/*` to Auth,
 matching what the app's Supabase client expects), `weaviate`, and
 `t2v-transformers` (the local embedding model).
 
+## Self-host the same stack on Render
+
+`render.yaml` deploys the equivalent stack as separate Render services
+instead of Docker Compose containers — same six pieces (app, Postgres, Auth,
+Kong, Weaviate, embeddings), still with only the AI provider call leaving
+the network. Two of them (`docker/kong-render/`, `docker/weaviate-render/`)
+are thin wrappers around the stock `kong`/`weaviate` images because Render
+can't hand a service a static config file referencing another service's
+address — the wrapper composes it from env vars at container start instead.
+
+Deploy: connect this repo in the Render dashboard as a Blueprint, then set
+an AI provider key (e.g. `GROQ_API_KEY`) on the `nonaki-app` service — it's
+excluded from the blueprint itself. See the comments in `render.yaml` for
+the couple of things worth double-checking on first deploy.
+
 ## Flow
 
 ```
