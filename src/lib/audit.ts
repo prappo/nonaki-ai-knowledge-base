@@ -42,12 +42,15 @@ export async function audit(
  * there is no request context (background jobs) or Supabase isn't configured.
  */
 export async function currentActor(): Promise<string> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // See SUPABASE_INTERNAL_URL note in middleware.ts.
+  const url = process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return "system";
   try {
     const store = await cookies();
     const supabase = createServerClient(url, anonKey, {
+      // See cookieOptions note in supabase/client.ts.
+      cookieOptions: { name: "sb-auth-token" },
       cookies: {
         getAll: () => store.getAll(),
         setAll: () => {}, // read-only: never mutate cookies from audit reads

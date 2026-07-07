@@ -15,7 +15,20 @@ const globalForWeaviate = globalThis as unknown as {
   weaviateClient?: Promise<WeaviateClient>;
 };
 
+/** "cloud" (default) — Weaviate Cloud with its built-in embedding service.
+ *  "local" — a self-hosted Weaviate + text2vec-transformers, e.g. via docker-compose. */
+function weaviateMode(): "cloud" | "local" {
+  return process.env.WEAVIATE_MODE === "local" ? "local" : "cloud";
+}
+
 async function connect(): Promise<WeaviateClient> {
+  const client =
+    weaviateMode() === "local" ? await connectLocal() : await connectCloud();
+  await ensureSchema(client);
+  return client;
+}
+
+async function connectCloud(): Promise<WeaviateClient> {
   const url = process.env.WEAVIATE_URL;
   const apiKey = process.env.WEAVIATE_API_KEY;
   if (!url || !apiKey) {
@@ -23,11 +36,23 @@ async function connect(): Promise<WeaviateClient> {
       "WEAVIATE_URL and WEAVIATE_API_KEY must be set in .env — create a free sandbox at console.weaviate.cloud"
     );
   }
-  const client = await weaviate.connectToWeaviateCloud(url, {
+  return weaviate.connectToWeaviateCloud(url, {
     authCredentials: new weaviate.ApiKey(apiKey),
   });
-  await ensureSchema(client);
-  return client;
+}
+
+async function connectLocal(): Promise<WeaviateClient> {
+  const host = process.env.WEAVIATE_HOST || "localhost";
+  const port = Number(process.env.WEAVIATE_PORT || 8080);
+  const grpcPort = Number(process.env.WEAVIATE_GRPC_PORT || 50051);
+  return weaviate.connectToCustom({
+    httpHost: host,
+    httpPort: port,
+    httpSecure: false,
+    grpcHost: host,
+    grpcPort,
+    grpcSecure: false,
+  });
 }
 
 async function ensureSchema(client: WeaviateClient) {
@@ -49,10 +74,16 @@ async function ensureSchema(client: WeaviateClient) {
       { name: "url", dataType: "text", skipVectorization: true },
       { name: "chunkIndex", dataType: "int" },
     ],
-    // Weaviate Cloud's built-in embedding service — no external embedding key needed
-    vectorizers: weaviate.configure.vectors.text2VecWeaviate({
-      sourceProperties: ["title", "content"],
-    }),
+    // Cloud: Weaviate Cloud's built-in embedding service, no external key needed.
+    // Local: the self-hosted text2vec-transformers module (see docker-compose.yml).
+    vectorizers:
+      weaviateMode() === "local"
+        ? weaviate.configure.vectors.text2VecTransformers({
+            sourceProperties: ["title", "content"],
+          })
+        : weaviate.configure.vectors.text2VecWeaviate({
+            sourceProperties: ["title", "content"],
+          }),
   });
 }
 

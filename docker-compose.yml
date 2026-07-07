@@ -1,0 +1,131 @@
+# Fully-local stack: Postgres, Auth, Weaviate + local embeddings all run here.
+# The only thing that still leaves this network is the AI provider call
+# (Groq/OpenAI/Anthropic/DeepSeek), via GROQ_API_KEY etc. below.
+#
+# Usage:
+#   cp .env.docker.example .env.docker   # then fill in an AI provider key
+#   docker compose --env-file .env.docker up --build
+
+services:
+  postgres:
+    image: supabase/postgres:15.14.1.143
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: "3600"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-role-passwords.sql:/etc/postgresql.schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth:
+    image: supabase/gotrue:v2.192.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: http://localhost:8000
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:local-gotrue-db-password@postgres:5432/postgres
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      # No SMTP server locally — new signups are confirmed immediately.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+
+  kong:
+    image: kong:3.6
+    restart: unless-stopped
+    depends_on:
+      - auth
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong.yml
+      KONG_ADMIN_LISTEN: "off"
+    volumes:
+      - ./docker/kong.yml:/kong.yml:ro
+    ports:
+      - "8000:8000"
+
+  weaviate:
+    image: semitechnologies/weaviate:1.37.11
+    restart: unless-stopped
+    depends_on:
+      - t2v-transformers
+    environment:
+      QUERY_DEFAULTS_LIMIT: "25"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      ENABLE_MODULES: text2vec-transformers
+      DEFAULT_VECTORIZER_MODULE: text2vec-transformers
+      TRANSFORMERS_INFERENCE_API: http://t2v-transformers:8080
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+
+  t2v-transformers:
+    image: semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2
+    restart: unless-stopped
+    environment:
+      ENABLE_CUDA: "0"
+
+  app:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kong:
+        condition: service_started
+      weaviate:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      DIRECT_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+      # Server-side code runs inside this container, where "localhost:8000"
+      # is its own loopback, not Kong — reach Kong by its service name instead.
+      SUPABASE_INTERNAL_URL: http://kong:8000
+      WEAVIATE_MODE: local
+      WEAVIATE_HOST: weaviate
+      WEAVIATE_PORT: "8080"
+      WEAVIATE_GRPC_PORT: "50051"
+      DATA_SOURCE_DISABLED: ${DATA_SOURCE_DISABLED:-false}
+      # AI provider calls still go out to the real API — nothing local about these.
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-}
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  weaviate_data:

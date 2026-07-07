@@ -28,22 +28,26 @@ export default function LoginPage() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setNotice("Signed in — redirecting…");
+        await new Promise((r) => setTimeout(r, 500));
         router.push("/");
         router.refresh();
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         if (data.session) {
+          setNotice("Account created — redirecting…");
+          await new Promise((r) => setTimeout(r, 500));
           router.push("/");
           router.refresh();
         } else {
           setNotice("Check your inbox — confirm your email, then sign in.");
           setMode("signin");
+          setBusy(false);
         }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
-    } finally {
       setBusy(false);
     }
   }

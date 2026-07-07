@@ -10,7 +10,7 @@ A self-maintaining RAG (Retrieval-Augmented Generation) knowledge base.
 | Concern | Technology |
 |---|---|
 | Framework | Next.js 16 (App Router, TypeScript, Tailwind v4) |
-| Vector DB | **Weaviate Cloud** with the built-in `text2vec-weaviate` embedding service |
+| Vector DB | **Weaviate Cloud** with the built-in `text2vec-weaviate` embedding service (or self-hosted Weaviate + `text2vec-transformers` via Docker — see below) |
 | Answers & drafting | **Groq** free-tier LLMs (`groq-sdk`, streaming — default `llama-3.3-70b-versatile`) |
 | Chunking | **LangChain** `RecursiveCharacterTextSplitter` (`@langchain/textsplitters`) |
 | Metadata DB | **Supabase Postgres** via **Prisma 7** (sources, documents, proposals, sync/ask logs) |
@@ -73,6 +73,31 @@ The `Chunk` collection in Weaviate is created automatically on first use, config
 ```bash
 npm run dev    # http://localhost:3000
 ```
+
+## Run fully locally with Docker
+
+`docker-compose.yml` runs everything — Postgres, Auth, Weaviate, and its
+embedding model — in containers on your machine. The **only** thing that
+still leaves the Docker network is the AI provider call itself
+(Groq/OpenAI/Anthropic/DeepSeek); this is a separate stack from your regular
+`.env`/cloud setup and doesn't touch it.
+
+```bash
+cp .env.docker.example .env.docker
+# fill in at least one AI provider key (e.g. GROQ_API_KEY) in .env.docker
+docker compose --env-file .env.docker up --build
+```
+
+Then open `http://localhost:3000` and sign up — Auth auto-confirms new
+accounts locally (no SMTP server). Weaviate uses the self-hosted
+`text2vec-transformers` module (a small sentence-transformer model, ~90MB)
+for embeddings instead of Weaviate Cloud's service — nothing leaves the
+network for that step either.
+
+Services: `app` (this repo), `postgres` (`supabase/postgres`, also backs
+Auth), `auth` (`supabase/gotrue`), `kong` (routes `/auth/v1/*` to Auth,
+matching what the app's Supabase client expects), `weaviate`, and
+`t2v-transformers` (the local embedding model).
 
 ## Flow
 

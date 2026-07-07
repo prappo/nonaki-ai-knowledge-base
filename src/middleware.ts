@@ -31,7 +31,10 @@ function isPublic(req: NextRequest): boolean {
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Server-side code runs inside its own network context (e.g. a Docker
+  // container), which may not reach Supabase at the same URL the browser
+  // does — SUPABASE_INTERNAL_URL overrides just for server-side calls.
+  const url = process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     // Supabase not configured yet — let everything through so setup is possible
@@ -39,6 +42,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, anonKey, {
+    // See cookieOptions note in supabase/client.ts.
+    cookieOptions: { name: "sb-auth-token" },
     cookies: {
       getAll() {
         return request.cookies.getAll();
