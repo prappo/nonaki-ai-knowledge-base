@@ -20,18 +20,75 @@ A self-maintaining RAG (Retrieval-Augmented Generation) knowledge base.
 ## Features
 
 - **Ask (console)** — streaming RAG answers with numbered citations and a confidence meter. Hybrid (vector + BM25) retrieval from Weaviate.
-- **Search** — raw hybrid search over indexed chunks.
+
+  ![Ask console](screenshots/ask.png)
+
+- **Documents** — every indexed page, issue, upload and manual entry in one searchable, filterable table.
+
+  ![Documents](screenshots/documents.png)
+
+  Open a document to read it, see its version history, or ask the built-in assistant to revise it.
+
+  ![Document detail](screenshots/document-detail.png)
+
 - **Data sources**
   - **WordPress import** — paste a site URL; published posts & pages are pulled from the public REST API (`/wp-json/wp/v2`), stripped to text, chunked and indexed.
+  - **GitHub import** — connect a public or private repo (via a fine-grained PAT); open issues & PRs are pulled in, chunked and indexed.
   - **File uploads** — PDF / DOCX / TXT / MD, parsed → chunked → indexed.
-- **Maintenance & approval flow** — re-syncing WordPress detects changed or removed content and queues **proposals** instead of silently updating:
+  - **Manual entries** — notes written directly in Nonaki, chunked & indexed like everything else.
+
+  ![Data sources](screenshots/data-sources.png)
+
+- **Maintenance & approval flow** — re-syncing a source detects changed or removed content and queues **proposals** instead of silently updating:
   - side-by-side diff of current vs proposed content
   - **Approve & publish** → document version bumps, content is re-chunked with LangChain and re-indexed in Weaviate
   - **Reject** → the indexed version is kept
   - archive proposals remove a document's chunks from Weaviate
+
+  ![Review queue](screenshots/review-queue.png)
+
 - **Doc assistant** — ask the AI to revise any document; the draft lands in the review queue as a proposal.
 - **Maintenance digest** — weekly stats, pending decisions, recent approvals, live activity feed.
-- **Settings** — chunk size, retrieval depth, citation policy.
+
+  ![Maintenance digest](screenshots/digest.png)
+
+- **Import history** — every import & sync job, what it did and what broke, with one-click retry.
+
+  ![Import history](screenshots/imports.png)
+
+- **Audit log** — every important action (settings, syncs, approvals, profile changes) with who did it and when.
+
+  ![Audit log](screenshots/audit-log.png)
+
+- **Share** — publish the knowledge base beyond the console:
+  - **Chat widget** — an embeddable `<script>` widget, themeable, scoped to chosen sources.
+
+    ![Chat widget config](screenshots/share-chat-widget.png)
+
+  - **Chatbot** — connect the knowledge base to Facebook Messenger (Instagram DM, WhatsApp, Telegram planned).
+
+    ![Chatbot config](screenshots/share-chatbot.png)
+
+  - **Knowledge base site** — a public, themeable help-center generated from indexed docs, searchable and optionally AI-powered.
+
+    ![Knowledge base site config](screenshots/share-knowledge-base.png)
+
+  What visitors see — the embedded KB site and chat widget:
+
+  ![Embedded knowledge base](screenshots/embed-knowledge-base.png)
+  ![Embedded chat widget](screenshots/embed-chat-widget.png)
+
+- **Settings** — pick an AI provider (Groq, OpenAI, Claude, DeepSeek), toggle thinking mode, chunk size, retrieval depth.
+
+  ![Settings](screenshots/settings.png)
+
+- **Profile** — account details and per-provider AI token usage.
+
+  ![Profile](screenshots/profile.png)
+
+- **Auth** — email + password sign-in, middleware-protected app (embeds & webhooks stay public).
+
+  ![Login](screenshots/login.png)
 
 ## Setup
 
@@ -151,10 +208,10 @@ a periodic `pg_dump` of the `postgres` volume and a backup of the
 ## Flow
 
 ```
-WordPress / uploads ──▶ parse ──▶ LangChain chunker ──▶ Weaviate (text2vec-weaviate)
-                                                            │
-        Ask ──▶ hybrid retrieval ──▶ Groq LLM ──▶ streamed, cited answer
-                                                            │
-WordPress re-sync ──▶ drift detected ──▶ proposal (diff) ──▶ approve ──▶ re-chunk + re-index
-                                                        └──▶ reject  ──▶ keep current
+WordPress / GitHub / uploads ──▶ parse ──▶ LangChain chunker ──▶ Weaviate (text2vec-weaviate)
+                                                                     │
+             Ask ──▶ hybrid retrieval ──▶ Groq LLM ──▶ streamed, cited answer
+                                                                     │
+Source re-sync ──▶ drift detected ──▶ proposal (diff) ──▶ approve ──▶ re-chunk + re-index
+                                                       └──▶ reject  ──▶ keep current
 ```
