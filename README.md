@@ -5,6 +5,8 @@ A self-maintaining RAG (Retrieval-Augmented Generation) knowledge base.
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/prappo/nonaki-ai-knowledge-base&env=DATABASE_URL,DIRECT_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,WEAVIATE_URL,WEAVIATE_API_KEY,GROQ_API_KEY&envDescription=Required%20credentials%20for%20Supabase%2C%20Weaviate%20and%20Groq%20%E2%80%94%20see%20.env.example&envLink=https://github.com/prappo/nonaki-ai-knowledge-base/blob/main/.env.example)
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/prappo/nonaki-ai-knowledge-base)
 
+<img src="screenshots/ask.png" alt="Ask console" width="100%">
+
 ## Stack
 
 | Concern | Technology |
@@ -20,75 +22,65 @@ A self-maintaining RAG (Retrieval-Augmented Generation) knowledge base.
 ## Features
 
 - **Ask (console)** — streaming RAG answers with numbered citations and a confidence meter. Hybrid (vector + BM25) retrieval from Weaviate.
-
-  ![Ask console](screenshots/ask.png)
-
-- **Documents** — every indexed page, issue, upload and manual entry in one searchable, filterable table.
-
-  ![Documents](screenshots/documents.png)
-
-  Open a document to read it, see its version history, or ask the built-in assistant to revise it.
-
-  ![Document detail](screenshots/document-detail.png)
-
+- **Documents** — every indexed page, issue, upload and manual entry in one searchable, filterable table. Open one to read it, see its version history, or ask the built-in assistant to revise it.
 - **Data sources**
   - **WordPress import** — paste a site URL; published posts & pages are pulled from the public REST API (`/wp-json/wp/v2`), stripped to text, chunked and indexed.
   - **GitHub import** — connect a public or private repo (via a fine-grained PAT); open issues & PRs are pulled in, chunked and indexed.
   - **File uploads** — PDF / DOCX / TXT / MD, parsed → chunked → indexed.
   - **Manual entries** — notes written directly in Nonaki, chunked & indexed like everything else.
-
-  ![Data sources](screenshots/data-sources.png)
-
 - **Maintenance & approval flow** — re-syncing a source detects changed or removed content and queues **proposals** instead of silently updating:
   - side-by-side diff of current vs proposed content
   - **Approve & publish** → document version bumps, content is re-chunked with LangChain and re-indexed in Weaviate
   - **Reject** → the indexed version is kept
   - archive proposals remove a document's chunks from Weaviate
-
-  ![Review queue](screenshots/review-queue.png)
-
 - **Doc assistant** — ask the AI to revise any document; the draft lands in the review queue as a proposal.
 - **Maintenance digest** — weekly stats, pending decisions, recent approvals, live activity feed.
-
-  ![Maintenance digest](screenshots/digest.png)
-
 - **Import history** — every import & sync job, what it did and what broke, with one-click retry.
-
-  ![Import history](screenshots/imports.png)
-
 - **Audit log** — every important action (settings, syncs, approvals, profile changes) with who did it and when.
-
-  ![Audit log](screenshots/audit-log.png)
-
 - **Share** — publish the knowledge base beyond the console:
   - **Chat widget** — an embeddable `<script>` widget, themeable, scoped to chosen sources.
-
-    ![Chat widget config](screenshots/share-chat-widget.png)
-
   - **Chatbot** — connect the knowledge base to Facebook Messenger (Instagram DM, WhatsApp, Telegram planned).
-
-    ![Chatbot config](screenshots/share-chatbot.png)
-
   - **Knowledge base site** — a public, themeable help-center generated from indexed docs, searchable and optionally AI-powered.
-
-    ![Knowledge base site config](screenshots/share-knowledge-base.png)
-
-  What visitors see — the embedded KB site and chat widget:
-
-  ![Embedded knowledge base](screenshots/embed-knowledge-base.png)
-  ![Embedded chat widget](screenshots/embed-chat-widget.png)
-
 - **Settings** — pick an AI provider (Groq, OpenAI, Claude, DeepSeek), toggle thinking mode, chunk size, retrieval depth.
-
-  ![Settings](screenshots/settings.png)
-
 - **Profile** — account details and per-provider AI token usage.
-
-  ![Profile](screenshots/profile.png)
-
 - **Auth** — email + password sign-in, middleware-protected app (embeds & webhooks stay public).
 
-  ![Login](screenshots/login.png)
+## Screens
+
+<table>
+<tr>
+<td width="50%"><img src="screenshots/ask.png" width="100%"><br><sub><b>Ask</b> — streaming answers with citations</sub></td>
+<td width="50%"><img src="screenshots/documents.png" width="100%"><br><sub><b>Documents</b> — every indexed item, filterable</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/document-detail.png" width="100%"><br><sub><b>Document detail</b> — read, version history, AI revise</sub></td>
+<td width="50%"><img src="screenshots/data-sources.png" width="100%"><br><sub><b>Data sources</b> — WordPress, GitHub, uploads, manual</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/review-queue.png" width="100%"><br><sub><b>Review queue</b> — diff, approve & publish, or reject</sub></td>
+<td width="50%"><img src="screenshots/digest.png" width="100%"><br><sub><b>Maintenance digest</b> — weekly stats & live activity</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/imports.png" width="100%"><br><sub><b>Import history</b> — every job, what broke, retry</sub></td>
+<td width="50%"><img src="screenshots/audit-log.png" width="100%"><br><sub><b>Audit log</b> — every action, who and when</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/share-chat-widget.png" width="100%"><br><sub><b>Chat widget</b> — embeddable, themeable, scoped</sub></td>
+<td width="50%"><img src="screenshots/share-chatbot.png" width="100%"><br><sub><b>Chatbot</b> — Facebook Messenger integration</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/share-knowledge-base.png" width="100%"><br><sub><b>Knowledge base site</b> — public, themeable help center</sub></td>
+<td width="50%"><img src="screenshots/embed-knowledge-base.png" width="100%"><br><sub><b>Embedded KB site</b> — what visitors see</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/embed-chat-widget.png" width="100%"><br><sub><b>Embedded chat widget</b> — what visitors see</sub></td>
+<td width="50%"><img src="screenshots/settings.png" width="100%"><br><sub><b>Settings</b> — AI provider, chunking, retrieval</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/profile.png" width="100%"><br><sub><b>Profile</b> — account & AI token usage</sub></td>
+<td width="50%"><img src="screenshots/login.png" width="100%"><br><sub><b>Login</b> — email + password sign-in</sub></td>
+</tr>
+</table>
 
 ## Setup
 
