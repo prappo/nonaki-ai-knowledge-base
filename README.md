@@ -73,12 +73,11 @@ A self-maintaining RAG (Retrieval-Augmented Generation) knowledge base.
 <td width="50%"><img src="screenshots/embed-knowledge-base.png" width="100%"><br><sub><b>Embedded KB site</b> — what visitors see</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="screenshots/embed-chat-widget.png" width="100%"><br><sub><b>Embedded chat widget</b> — what visitors see</sub></td>
 <td width="50%"><img src="screenshots/settings.png" width="100%"><br><sub><b>Settings</b> — AI provider, chunking, retrieval</sub></td>
+<td width="50%"><img src="screenshots/profile.png" width="100%"><br><sub><b>Profile</b> — account & AI token usage</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="screenshots/profile.png" width="100%"><br><sub><b>Profile</b> — account & AI token usage</sub></td>
-<td width="50%"><img src="screenshots/login.png" width="100%"><br><sub><b>Login</b> — email + password sign-in</sub></td>
+<td align="center" colspan="2"><img src="screenshots/embed-chat-widget.png" width="380"><br><sub><b>Embedded chat widget</b> — what visitors see</sub></td>
 </tr>
 </table>
 
