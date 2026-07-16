@@ -19,13 +19,13 @@ export type AnswerResult = {
 };
 
 /**
- * Non-streaming RAG answer (used by the Messenger bot).
+ * Non-streaming RAG answer (used by the Messenger bot and the MCP server).
  * Plain-text friendly: pass stripMarkdown to remove ** and [n] markers.
  */
 export async function generateAnswer(
   question: string,
   sourceIds?: string[],
-  opts: { maxTokens?: number; stripMarkdown?: boolean } = {}
+  opts: { maxTokens?: number; stripMarkdown?: boolean; operation?: string } = {}
 ): Promise<AnswerResult> {
   const limit = await getNumberSetting("retrievalLimit");
   const docIds = await docIdsForSources(
@@ -42,7 +42,7 @@ export async function generateAnswer(
     user: `Knowledge base context:\n\n${contextBlocks.join("\n\n")}\n\nQuestion: ${question}`,
     maxTokens: opts.maxTokens ?? 1024,
     temperature: 0.2,
-    operation: "messenger",
+    operation: opts.operation ?? "messenger",
   });
 
   let answer = completion.trim();

@@ -35,10 +35,17 @@ export type KbConfig = {
   showAsk: boolean;
 };
 
-export type ShareKey = "widget" | "bot" | "kb";
-type AnyConfig = WidgetConfig | BotConfig | KbConfig;
+/** MCP server for AI clients (Claude, Cursor, …). */
+export type McpConfig = {
+  enabled: boolean;
+  apiKey: string;
+  sourceIds: string[];
+};
 
-const DEFAULTS: { widget: WidgetConfig; bot: BotConfig; kb: KbConfig } = {
+export type ShareKey = "widget" | "bot" | "kb" | "mcp";
+type AnyConfig = WidgetConfig | BotConfig | KbConfig | McpConfig;
+
+const DEFAULTS: { widget: WidgetConfig; bot: BotConfig; kb: KbConfig; mcp: McpConfig } = {
   widget: {
     name: "Nonaki Assistant",
     greeting: "Hi! 👋 Ask me anything — I answer from our knowledge base.",
@@ -69,6 +76,11 @@ const DEFAULTS: { widget: WidgetConfig; bot: BotConfig; kb: KbConfig } = {
     sourceIds: [],
     showAsk: true,
   },
+  mcp: {
+    enabled: false,
+    apiKey: "",
+    sourceIds: [],
+  },
 };
 
 const SETTING_KEY = (key: ShareKey) => `share:${key}`;
@@ -83,6 +95,11 @@ export async function getShareConfig<K extends ShareKey>(
   if (key === "bot" && !(merged as BotConfig).verifyToken) {
     (merged as BotConfig).verifyToken = randomBytes(12).toString("hex");
     await saveShareConfig("bot", merged as BotConfig);
+  }
+  // same for the MCP API key — saving an empty key regenerates it
+  if (key === "mcp" && !(merged as McpConfig).apiKey) {
+    (merged as McpConfig).apiKey = `nk_mcp_${randomBytes(24).toString("hex")}`;
+    await saveShareConfig("mcp", merged as McpConfig);
   }
   return merged;
 }

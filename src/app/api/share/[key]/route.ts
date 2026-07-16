@@ -8,7 +8,7 @@ import {
   type BotConfig,
 } from "@/lib/share";
 
-const VALID_KEYS: ShareKey[] = ["widget", "bot", "kb"];
+const VALID_KEYS: ShareKey[] = ["widget", "bot", "kb", "mcp"];
 
 function parseKey(key: string): ShareKey | null {
   return (VALID_KEYS as string[]).includes(key) ? (key as ShareKey) : null;

@@ -8,6 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *  - /widget.js                  embeddable launcher script
  *  - /api/embed/*                public ask/search/kb-data/doc APIs
  *  - /api/messenger/*            Meta webhook (has its own token/signature checks)
+ *  - /api/mcp                    MCP server for AI clients (guarded by its API key)
  *  - /api/cron/*                 Vercel Cron scheduler (guarded by CRON_SECRET)
  *  - GET /api/share/widget|kb    embed pages read their display config
  */
@@ -18,6 +19,7 @@ function isPublic(req: NextRequest): boolean {
   if (pathname.startsWith("/embed/") || pathname === "/embed") return true;
   if (pathname.startsWith("/api/embed/")) return true;
   if (pathname.startsWith("/api/messenger/")) return true;
+  if (pathname === "/api/mcp") return true;
   if (pathname.startsWith("/api/cron/")) return true;
   if (
     req.method === "GET" &&

@@ -74,6 +74,14 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M9.5 16.5h5" />
     </>
   ),
+  plug: (
+    <>
+      <path d="M12 22v-5" />
+      <path d="M9 8V2" />
+      <path d="M15 8V2" />
+      <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z" />
+    </>
+  ),
   book: (
     <>
       <path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />

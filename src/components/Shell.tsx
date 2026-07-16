@@ -30,6 +30,7 @@ const NAV = [
 const SHARE_ITEMS = [
   { href: "/share/widget", label: "Chat widget", icon: "bubble" },
   { href: "/share/chatbot", label: "Chatbot", icon: "bot" },
+  { href: "/share/mcp", label: "MCP server", icon: "plug" },
   { href: "/share/kb", label: "Knowledge base", icon: "book" },
 ] as const;
 
