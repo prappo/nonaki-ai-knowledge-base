@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:migrate-data": "tsx scripts/migrate-sqlite-to-supabase.ts"
+    "db:migrate-data": "tsx scripts/migrate-sqlite-to-supabase.ts",
+    "build:agent": "cd packages/release-agent && npm ci --no-audit --no-fund && PACK_DIR=../../agent npm run pack && mv ../../agent/release-agent-*.tgz ../../agent/release-agent.tgz",
+    "build:release-ui": "cd packages/release-agent && npm ci --no-audit --no-fund && npm run build:ui && rm -rf ../../public/release-console && cp -R dist-ui ../../public/release-console"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

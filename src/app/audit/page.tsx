@@ -32,6 +32,10 @@ const ACTION_STYLE: Record<string, string> = {
   document: "bg-green-soft text-green-deep",
   proposal: "bg-amber-soft text-amber",
   setting: "bg-gh-chip text-gh-ink",
+  project: "bg-wp-chip text-wp-ink",
+  release: "bg-amber-soft text-amber",
+  agent: "bg-teal-soft text-teal-dark",
+  data: "bg-diff-del text-diff-del-line",
 };
 
 const PER_PAGE = 50;

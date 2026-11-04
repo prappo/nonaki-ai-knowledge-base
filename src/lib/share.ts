@@ -35,11 +35,15 @@ export type KbConfig = {
   showAsk: boolean;
 };
 
+/** What MCP clients may do with Projects: nothing, read them, or plan in them. */
+export type McpProjectAccess = "off" | "read" | "write";
+
 /** MCP server for AI clients (Claude, Cursor, …). */
 export type McpConfig = {
   enabled: boolean;
   apiKey: string;
   sourceIds: string[];
+  projectAccess: McpProjectAccess;
 };
 
 export type ShareKey = "widget" | "bot" | "kb" | "mcp";
@@ -80,6 +84,7 @@ const DEFAULTS: { widget: WidgetConfig; bot: BotConfig; kb: KbConfig; mcp: McpCo
     enabled: false,
     apiKey: "",
     sourceIds: [],
+    projectAccess: "write",
   },
 };
 

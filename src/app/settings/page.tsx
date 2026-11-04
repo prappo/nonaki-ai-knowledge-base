@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TopStrip } from "@/components/Shell";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 type Settings = Record<string, string>;
 
@@ -233,6 +234,8 @@ export default function SettingsPage() {
             Credentials live in <span className="font-mono">.env</span> — they are never
             stored in the database or exposed to the browser.
           </p>
+
+          <DataManagement />
         </div>
       </div>
     </>
@@ -264,5 +267,201 @@ function InfraRow({
         {env}
       </span>
     </div>
+  );
+}
+
+type DataCounts = Record<string, number>;
+
+type DataTarget = {
+  id: string;
+  label: string;
+  description: string;
+  /** What the confirm dialog warns will be lost. */
+  warning: string;
+  countLabel: (c: DataCounts) => string;
+};
+
+const DATA_TARGETS: DataTarget[] = [
+  {
+    id: "documents",
+    label: "Documents",
+    description:
+      "Every document with its version history, review proposals and indexed chunks in Weaviate. Connected sources stay — re-sync to re-import.",
+    warning:
+      "Permanently deletes all documents (indexed and archived), their versions and proposals, and empties the Weaviate index.",
+    countLabel: (c) => `${c.documents ?? 0} docs`,
+  },
+  {
+    id: "proposals",
+    label: "Review queue",
+    description: "All change proposals — pending, approved and rejected. Documents are not changed.",
+    warning: "Permanently deletes every proposal, including pending ones that haven't been reviewed.",
+    countLabel: (c) => `${c.proposals ?? 0} (${c.pendingProposals ?? 0} pending)`,
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    description: "All projects with their tasks and document links. The linked documents themselves are kept.",
+    warning: "Permanently deletes every project and all of its tasks.",
+    countLabel: (c) => `${c.projects ?? 0} projects · ${c.projectTasks ?? 0} tasks`,
+  },
+  {
+    id: "versions",
+    label: "Version history",
+    description: "Past snapshots of every document. Current content is kept; restoring older versions won't be possible.",
+    warning: "Permanently deletes all document version snapshots.",
+    countLabel: (c) => `${c.versions ?? 0} versions`,
+  },
+  {
+    id: "digest",
+    label: "Digest & activity feed",
+    description: "Sync and indexing events shown on the Digest and Data sources pages.",
+    warning: "Permanently deletes the sync activity log.",
+    countLabel: (c) => `${c.digest ?? 0} events`,
+  },
+  {
+    id: "askHistory",
+    label: "Ask history",
+    description: "Logged questions and answers from the console, widget, KB site and Messenger.",
+    warning: "Permanently deletes all logged questions and answers.",
+    countLabel: (c) => `${c.askHistory ?? 0} questions`,
+  },
+  {
+    id: "imports",
+    label: "Import history",
+    description: "Finished, cancelled and failed import jobs. Running or paused imports are kept.",
+    warning: "Permanently deletes the import job history.",
+    countLabel: (c) => `${c.imports ?? 0} jobs`,
+  },
+  {
+    id: "aiUsage",
+    label: "AI usage",
+    description: "Token usage records per provider and model.",
+    warning: "Permanently deletes all AI usage records.",
+    countLabel: (c) => `${c.aiUsage ?? 0} records`,
+  },
+  {
+    id: "audit",
+    label: "Audit log",
+    description: "Who did what and when. One entry recording this deletion is kept.",
+    warning: "Permanently deletes the audit trail.",
+    countLabel: (c) => `${c.audit ?? 0} entries`,
+  },
+  {
+    id: "sources",
+    label: "Data sources",
+    description: "Every connected source and everything imported from it — documents, versions, proposals and import jobs.",
+    warning:
+      "Permanently disconnects all sources and deletes all their documents, versions, proposals, import jobs and indexed chunks.",
+    countLabel: (c) => `${c.sources ?? 0} sources`,
+  },
+  {
+    id: "everything",
+    label: "Everything",
+    description:
+      "Reset the knowledge base: sources, documents, review queue, projects, history, logs and usage. Settings and share configuration are kept.",
+    warning:
+      "Permanently deletes ALL knowledge base data and empties the Weaviate index. This cannot be undone.",
+    countLabel: () => "all data",
+  },
+];
+
+function DataManagement() {
+  const [counts, setCounts] = useState<DataCounts | null>(null);
+  const [pending, setPending] = useState<DataTarget | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/data")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setCounts(d.counts));
+  }, []);
+
+  async function confirm() {
+    if (!pending) return;
+    setLoading(true);
+    setError(null);
+    const res = await fetch("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: pending.id }),
+    });
+    const d = await res.json().catch(() => ({}));
+    setLoading(false);
+    if (!res.ok) {
+      setError(d.error ?? "Delete failed");
+      return;
+    }
+    setCounts(d.counts ?? counts);
+    setDone(`${pending.label}: deleted ${d.deleted ?? 0} record${d.deleted === 1 ? "" : "s"}`);
+    setTimeout(() => setDone(null), 4000);
+    setPending(null);
+  }
+
+  return (
+    <>
+      <div className="mt-5 font-mono text-[10px] tracking-[0.08em] text-muted">
+        DATA — DANGER ZONE
+      </div>
+      {done && (
+        <div className="mt-2 rounded-lg border border-line bg-green-soft px-3 py-2 text-[11.5px] text-green">
+          {done}
+        </div>
+      )}
+      <div className="mt-2 overflow-hidden rounded-xl border border-warn-line bg-card">
+        {DATA_TARGETS.map((t, i) => {
+          const isAll = t.id === "everything";
+          return (
+            <div
+              key={t.id}
+              className={`flex items-center gap-3.5 px-[18px] py-[13px] ${
+                i < DATA_TARGETS.length - 1 ? "border-b border-hairline-2" : ""
+              } ${isAll ? "bg-warn-bg" : ""}`}
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold">{t.label}</span>
+                  <span className="rounded-[5px] bg-chip px-1.5 py-0.5 font-mono text-[9.5px] text-muted">
+                    {counts ? t.countLabel(counts) : "…"}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11.5px] leading-[1.45] text-muted">{t.description}</div>
+              </div>
+              <button
+                onClick={() => {
+                  setError(null);
+                  setPending(t);
+                }}
+                className={`ml-auto flex-none rounded-md border px-[11px] py-[5px] text-[11.5px] font-semibold ${
+                  isAll
+                    ? "border-diff-del-line bg-diff-del-line text-white hover:bg-[#a85647]"
+                    : "border-warn-line text-warn-text hover:border-diff-del-line hover:bg-diff-del"
+                }`}
+              >
+                {isAll ? "Delete all" : "Delete"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        Deletions are permanent and recorded in the audit log.
+      </p>
+
+      <DeleteConfirmDialog
+        open={pending !== null}
+        title={pending ? `Delete ${pending.label.toLowerCase()}?` : ""}
+        description={pending?.description ?? ""}
+        warning={pending?.warning}
+        confirmLabel="Delete permanently"
+        requireText={pending?.id === "everything" || pending?.id === "sources" || pending?.id === "documents" ? "DELETE" : undefined}
+        loading={loading}
+        error={error}
+        onCancel={() => setPending(null)}
+        onConfirm={confirm}
+      />
+    </>
   );
 }

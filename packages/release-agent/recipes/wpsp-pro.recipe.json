@@ -1,0 +1,805 @@
+{
+  "recipe": 1,
+  "name": "WP Simple Pay Pro",
+  "brand": {
+    "name": "WP Simple Pay",
+    "mark": "M2.352 0C1.052 0 0 1.02 0 2.277v30.746C0 34.281 1.053 35.3 2.352 35.3h28.806c.975 0 1.764-.764 1.764-1.708 0-.943-.79-1.708-1.763-1.708H5.29c-.974 0-1.764-.765-1.764-1.708v-17.08c0-.944.79-1.709 1.764-1.709h44.092c1.299 0 2.352-1.02 2.352-2.277V2.277C51.735 1.02 50.682 0 49.383 0H2.352Zm55.262 24.198h-1.47v-1.993c0-4.088-3.422-7.402-7.643-7.402-4.22 0-7.642 3.314-7.642 7.402v1.993H38.8c-1.299 0-2.352 1.02-2.352 2.277v11.387c0 1.258 1.053 2.278 2.352 2.278h18.813c1.299 0 2.351-1.02 2.351-2.278V26.475c0-1.258-1.053-2.277-2.351-2.277Zm-4.997-1.993v1.993h-8.23v-1.993c0-2.201 1.842-3.985 4.114-3.985 2.273 0 4.116 1.784 4.116 3.985ZM8.23 20.497c0-.629.526-1.139 1.175-1.139H28.22c.65 0 1.176.51 1.176 1.139s-.527 1.139-1.176 1.139H9.406c-.649 0-1.175-.51-1.175-1.139Zm0 5.124c0-.629.526-1.138 1.175-1.138h7.055c.65 0 1.176.51 1.176 1.138 0 .63-.527 1.139-1.176 1.139H9.406c-.649 0-1.175-.51-1.175-1.139Zm31.158 11.672V27.045h17.637v10.248H39.389Z"
+  },
+  "consoleState": "tools/release-console",
+  "vars": {
+    "litePath": "{settings.liteRepoPath}",
+    "svnPath": {
+      "if": "env.SVN_WC",
+      "then": "{env.SVN_WC}",
+      "else": "{repoParent}/stripe-svn"
+    }
+  },
+  "version": {
+    "pattern": "^(?<base>\\d+\\.\\d+\\.\\d+)(?<hotfix>\\.\\d+)?$",
+    "hint": "A version like 4.17.5, or a 4-part hotfix like 4.17.4.1",
+    "vars": {
+      "releaseDir": "docs/releases/{base}",
+      "analysisFile": {
+        "if": "hotfix",
+        "then": "{releaseDir}/{version}.md",
+        "else": "{releaseDir}/release.md"
+      },
+      "siteChangesFile": {
+        "if": "hotfix",
+        "then": "{releaseDir}/marketing-site-changes-{version}.md",
+        "else": "{releaseDir}/marketing-site-changes.md"
+      }
+    }
+  },
+  "settings": {
+    "file": ".claude/release.config.json",
+    "fields": {
+      "marketingSitePath": {
+        "label": "Marketing site docs plugin",
+        "help": "The wpsp-docs plugin folder. The Docs stage copies articles here and syncs them.",
+        "type": "path",
+        "validate": [
+          {
+            "rule": "required",
+            "level": "warning",
+            "message": "No marketing site set. The Docs stage cannot sync docs to wpsimplepay.com until it is."
+          },
+          {
+            "rule": "isDirectory",
+            "level": "error",
+            "message": "The marketing site folder {value} does not exist."
+          },
+          {
+            "rule": "contains",
+            "paths": [
+              "docs-user",
+              "package.json"
+            ],
+            "level": "error",
+            "message": "{value} does not look like the wpsp-docs plugin (no docs-user/ folder or package.json)."
+          }
+        ]
+      },
+      "liteRepoPath": {
+        "label": "Lite checkout",
+        "help": "Leave empty to use the default next to this checkout. The Lite commands clone it there on first use.",
+        "type": "path",
+        "default": "{repoParent}/wp-simple-pay-lite",
+        "env": "LITE_REPO",
+        "validate": [
+          {
+            "rule": "notSamePath",
+            "path": "{repo}",
+            "level": "error",
+            "message": "The Lite path points at this Pro checkout. Lite must be a separate folder."
+          },
+          {
+            "rule": "isDirectory",
+            "level": "warning",
+            "message": "No Lite checkout at {value} yet. The Lite commands clone it there on first use."
+          },
+          {
+            "rule": "contains",
+            "paths": [
+              "stripe-checkout.php"
+            ],
+            "level": "error",
+            "message": "{value} is not a Lite checkout (no stripe-checkout.php)."
+          }
+        ]
+      }
+    }
+  },
+  "groups": [
+    {
+      "id": "qa",
+      "label": "Quality checks"
+    },
+    {
+      "id": "prepare",
+      "label": "Prepare release"
+    },
+    {
+      "id": "publish",
+      "label": "Preview content"
+    },
+    {
+      "id": "ship",
+      "label": "Release"
+    }
+  ],
+  "stages": [
+    {
+      "id": "review-milestone",
+      "group": "qa",
+      "title": "Review milestone PRs",
+      "prompt": "/wpsp-review-milestone {version}",
+      "summary": "Reviews every open PR in the milestone (one subagent per PR), audits the milestone’s issues, and writes a review file per PR plus an index.",
+      "requires": [
+        "gh"
+      ],
+      "doneWhen": {
+        "fileExists": "docs/releases/{version}/reviews/README.md"
+      },
+      "review": {
+        "type": "file",
+        "path": "docs/releases/{version}/reviews/README.md",
+        "label": "Open review index"
+      }
+    },
+    {
+      "id": "compare-builds",
+      "group": "qa",
+      "title": "Compare build with last release",
+      "prompt": "/wpsp-compare-builds {version}",
+      "summary": "Compares the Pro and Lite zips with the last release, to catch missing assets and stray files before shipping. Uses the release branch’s CI build, or a local build from the Builds page.",
+      "gates": [
+        "Compare a stale build, or dispatch a fresh one (CI build only)"
+      ],
+      "requires": [
+        "gh"
+      ],
+      "doneWhen": {
+        "fileExists": "build-audit/reports/{version}-build-diff.md"
+      },
+      "localBuild": {
+        "requireArtifact": "pro",
+        "args": [
+          "--candidate {build.artifact.pro}",
+          {
+            "if": "build.artifact.lite",
+            "then": "--lite-candidate {build.artifact.lite}",
+            "else": "--pro-only"
+          },
+          {
+            "if": "build.commit",
+            "then": "--candidate-commit {build.commit}"
+          },
+          {
+            "if": "build.changes",
+            "then": "--candidate-uncommitted {build.changes}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "analyze",
+      "group": "prepare",
+      "title": "Draft changelog & analysis",
+      "prompt": "/wpsp-analyze-release {version}",
+      "summary": "Reads every change since the last tag and writes the release analysis, changelog draft and PR body. Also updates docs/PRODUCT.md.",
+      "requires": [
+        "gh"
+      ],
+      "doneWhen": {
+        "fileExists": "{analysisFile}"
+      },
+      "review": {
+        "type": "file",
+        "path": "{analysisFile}",
+        "label": "Review analysis"
+      }
+    },
+    {
+      "id": "prep",
+      "group": "prepare",
+      "title": "Bump version & changelog",
+      "prompt": "/wpsp-prep-release {version}",
+      "summary": "Checks out the release branch, bumps the version, writes the changelog into both readmes, replaces {next} tags and writes the marketing site changes report.",
+      "gates": [
+        "Approve or edit the changelog entries"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{analysisFile}"
+          },
+          "reason": "Run Draft changelog & analysis first. {analysisFile} does not exist yet."
+        }
+      ],
+      "doneWhen": {
+        "all": [
+          {
+            "fileMatches": "simple-pay.php",
+            "regex": "^\\s*\\*?\\s*Version:\\s*{version}\\s*$"
+          },
+          {
+            "fileMatches": "simple-pay.php",
+            "regex": "define\\(\\s*'SIMPLE_PAY_VERSION',\\s*'{version}'\\s*\\)"
+          },
+          {
+            "fileExists": "{siteChangesFile}"
+          }
+        ]
+      },
+      "review": {
+        "type": "changes",
+        "label": "Review changes"
+      }
+    },
+    {
+      "id": "docs",
+      "group": "prepare",
+      "title": "Update customer docs",
+      "prompt": "/wpsp-update-docs {version}",
+      "summary": "Updates the customer docs in docs-user/ for this release, captures screenshots and syncs the docs to the marketing site.",
+      "gates": [
+        "Confirm the scope of changes",
+        "Approve the plan of articles to add or update",
+        "Start the marketing site in Local if it is stopped"
+      ],
+      "requires": [
+        "local-wp"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{analysisFile}"
+          },
+          "reason": "Run Draft changelog & analysis first. {analysisFile} does not exist yet."
+        }
+      ],
+      "review": {
+        "type": "docs",
+        "label": "Review docs"
+      }
+    },
+    {
+      "id": "marketing",
+      "group": "prepare",
+      "title": "Write marketing content",
+      "prompt": "/wpsp-marketing-all {version}",
+      "summary": "Writes the blog post first, then the featured image (generated in Chatty through your Chrome), newsletter, social posts, Slack posts and in-plugin notifications in parallel.",
+      "gates": [
+        "Pick the blog title and approve the section plan",
+        "Sign in to Chatty in Chrome if needed (for the featured image)"
+      ],
+      "requires": [
+        "browser"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{analysisFile}"
+          },
+          "reason": "Run Draft changelog & analysis first. {analysisFile} does not exist yet."
+        }
+      ],
+      "doneWhen": {
+        "all": [
+          {
+            "fileExists": "{releaseDir}/blog.html"
+          },
+          {
+            "fileExists": "{releaseDir}/blog-{version}-featured-image.jpg"
+          },
+          {
+            "fileExists": "{releaseDir}/newsletter.html"
+          },
+          {
+            "fileExists": "{releaseDir}/twitter.txt"
+          },
+          {
+            "fileExists": "{releaseDir}/linkedin.txt"
+          },
+          {
+            "fileExists": "{releaseDir}/slack-pro.txt"
+          },
+          {
+            "fileExists": "{releaseDir}/slack-lite.txt"
+          },
+          {
+            "fileExists": "{releaseDir}/notification-pro.html"
+          },
+          {
+            "fileExists": "{releaseDir}/notification-lite.html"
+          }
+        ]
+      },
+      "listMissing": true,
+      "review": {
+        "type": "files",
+        "label": "View assets"
+      }
+    },
+    {
+      "id": "blog-draft",
+      "group": "publish",
+      "title": "Create blog post draft",
+      "prompt": "/wpsp-publish-blog-post {version}",
+      "summary": "Creates the release post as a draft on wpsimplepay.com through your logged-in Chrome session: uploads the screenshots, sets the featured image and fills the SEO fields. Never publishes.",
+      "gates": [
+        "Confirm the screenshots and post details before anything is uploaded",
+        "Log in to wpsimplepay.com in Chrome if needed"
+      ],
+      "requires": [
+        "browser"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{releaseDir}/blog.html"
+          },
+          "reason": "Run Write marketing content first. blog.html does not exist yet."
+        },
+        {
+          "check": {
+            "any": [
+              {
+                "fileExists": "{releaseDir}/blog-{version}-featured-image.jpg"
+              },
+              {
+                "fileExists": "{releaseDir}/blog-{version}-featured-image.jpeg"
+              },
+              {
+                "fileExists": "{releaseDir}/blog-{version}-featured-image.png"
+              },
+              {
+                "fileExists": "{releaseDir}/blog-{version}-featured-image.webp"
+              }
+            ]
+          },
+          "reason": "Run Write marketing content first. The featured image does not exist yet."
+        }
+      ],
+      "review": {
+        "type": "file",
+        "path": "{releaseDir}/blog.html",
+        "label": "Preview blog post"
+      }
+    },
+    {
+      "id": "email-draft",
+      "group": "publish",
+      "title": "Draft email campaign",
+      "prompt": "/wpsp-draft-email-campaign {version}",
+      "summary": "Creates the release announcement as a draft campaign in Lindris through your logged-in Chrome session, with the newsletter, subject, preview text and sender. Never sends or schedules: it disables every send button in the page first, and saves with plain Save only.",
+      "gates": [
+        "Approve the campaign before anything is created",
+        "Log in to Lindris in Chrome if needed"
+      ],
+      "requires": [
+        "browser"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{releaseDir}/newsletter.html"
+          },
+          "reason": "Run Write marketing content first. newsletter.html does not exist yet."
+        }
+      ],
+      "review": {
+        "type": "file",
+        "path": "{releaseDir}/newsletter.html",
+        "label": "Preview newsletter"
+      }
+    },
+    {
+      "id": "notifications-draft",
+      "group": "publish",
+      "title": "Draft in-plugin notifications",
+      "prompt": "/wpsp-draft-notifications {version}",
+      "summary": "Creates the Pro and Lite in-plugin notifications as drafts on plugin.wpsimplepay.com through your logged-in Chrome session, with the right licenses, buttons and dates. Never publishes: it removes the Publish button from the page before filling anything, and saves with Save Draft only.",
+      "gates": [
+        "Approve both notifications before anything is created",
+        "Log in to plugin.wpsimplepay.com in Chrome if needed"
+      ],
+      "requires": [
+        "browser"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{releaseDir}/notification-pro.html"
+          },
+          "reason": "Run Write marketing content first. notification-pro.html does not exist yet."
+        },
+        {
+          "check": {
+            "fileExists": "{releaseDir}/notification-lite.html"
+          },
+          "reason": "Run Write marketing content first. notification-lite.html does not exist yet."
+        }
+      ],
+      "review": {
+        "type": "file",
+        "path": "{releaseDir}/notification-pro.html",
+        "label": "Preview notification copy"
+      },
+      "status": "wpsp-pro.hooks.mjs#notificationsDraft"
+    },
+    {
+      "id": "notifications",
+      "group": "publish",
+      "title": "Preview in-plugin notifications",
+      "prompt": "/wpsp-test-notifications {version}",
+      "summary": "Imports the draft in-plugin notifications into the local site and shows the Lite and Pro variants in the admin, then cleans up.",
+      "requires": [
+        "browser",
+        "local-wp"
+      ],
+      "review": {
+        "type": "files",
+        "label": "View notification drafts"
+      }
+    },
+    {
+      "id": "create-release",
+      "group": "ship",
+      "title": "Publish Pro release on GitHub",
+      "prompt": "/wpsp-create-release {version}",
+      "summary": "Tags the version on master and publishes the Pro GitHub release with the build attached. Checks the release PR has merged first. Permanent and public.",
+      "gates": [
+        "Confirm the tag and release notes before publishing"
+      ],
+      "irreversible": true,
+      "requires": [
+        "gh"
+      ],
+      "doneWhen": {
+        "gitTag": "{version}"
+      }
+    },
+    {
+      "id": "lite-sync",
+      "group": "ship",
+      "title": "Sync release to Lite repo",
+      "prompt": "/wpsp-lite-sync-release {version}",
+      "summary": "Copies the release from Pro’s build into the Lite checkout, commits it on Lite’s release branch and opens Lite’s release PR.",
+      "gates": [
+        "Confirm creating Lite’s release branch if it does not exist"
+      ],
+      "requires": [
+        "gh"
+      ],
+      "doneWhen": {
+        "fileMatches": "{litePath}/stripe-checkout.php",
+        "regex": "^\\s*\\*?\\s*Version:\\s*{version}\\s*$"
+      }
+    },
+    {
+      "id": "lite-publish",
+      "group": "ship",
+      "title": "Publish Lite release on GitHub",
+      "prompt": "/wpsp-lite-publish-release {version}",
+      "summary": "After Lite’s release PR has merged: tags Lite’s master and publishes the public Lite GitHub release with its zip. Permanent and public.",
+      "gates": [
+        "Confirm before tagging and publishing"
+      ],
+      "irreversible": true,
+      "requires": [
+        "gh"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{litePath}/stripe-checkout.php"
+          },
+          "reason": "Run Sync release to Lite repo first. There is no Lite checkout at {litePath}."
+        }
+      ],
+      "doneWhen": {
+        "gitTag": "{version}",
+        "repo": "{litePath}"
+      },
+      "status": "wpsp-pro.hooks.mjs#litePublish"
+    },
+    {
+      "id": "lite-wporg",
+      "group": "ship",
+      "title": "Publish Lite to WordPress.org",
+      "prompt": "/wpsp-lite-org-release {version}",
+      "summary": "Stages Lite’s GitHub Release zip into the wp.org SVN trunk and reports what changed. After you approve, commits trunk and tags the version on plugins.svn.wordpress.org. Permanent and public: it ships to every Lite site.",
+      "gates": [
+        "Review the staged trunk, then reply to commit and tag",
+        "Enter your wp.org SVN password in a terminal if it is not cached"
+      ],
+      "irreversible": true,
+      "requires": [
+        "svn"
+      ],
+      "status": "wpsp-pro.hooks.mjs#liteWporg"
+    }
+  ],
+  "probes": {
+    "liteRelease": {
+      "type": "githubRelease",
+      "repo": "awesomemotive/wp-simple-pay-lite",
+      "tag": "{version}"
+    },
+    "notificationFeeds": {
+      "type": "script",
+      "hook": "wpsp-pro.hooks.mjs#notificationFeeds"
+    }
+  },
+  "checks": [
+    {
+      "id": "branch",
+      "label": "Release branch",
+      "type": "gitBranch",
+      "expect": [
+        "release/{version}",
+        "hotfix/{version}"
+      ],
+      "stages": [
+        "analyze"
+      ],
+      "stageName": "Analyze"
+    },
+    {
+      "id": "previous-tag",
+      "label": "Previous release",
+      "type": "previousTag",
+      "tagPattern": "^\\d+\\.\\d+\\.\\d+(\\.\\d+)?$",
+      "stages": [
+        "analyze"
+      ],
+      "stageName": "Analyze"
+    },
+    {
+      "id": "working-tree",
+      "label": "Working tree",
+      "type": "workingTree"
+    },
+    {
+      "id": "gh",
+      "label": "GitHub CLI",
+      "type": "command",
+      "run": [
+        "gh",
+        "auth",
+        "status"
+      ],
+      "capture": "account (\\S+)",
+      "okDetail": "Logged in as {match}.",
+      "okDetailFallback": "Logged in.",
+      "failDetail": "Not logged in. Run `gh auth login`.",
+      "missingDetail": "`gh` is not installed.",
+      "stages": [
+        "review-milestone",
+        "compare-builds",
+        "analyze",
+        "create-release",
+        "lite-sync",
+        "lite-publish",
+        "lite-wporg"
+      ]
+    },
+    {
+      "id": "local-site",
+      "label": "Local site",
+      "type": "localWpSite",
+      "path": "{repo}",
+      "stages": [
+        "notifications"
+      ]
+    },
+    {
+      "id": "wp-env",
+      "label": "wp-env",
+      "type": "dockerContainer",
+      "namePattern": "wordpress-\\d+$",
+      "okDetail": "Running.",
+      "failDetail": "Not running. Docs screenshots need `npm run env:start`.",
+      "dockerDownDetail": "Docker is not running. Docs screenshots need `npm run env:start`.",
+      "stages": [
+        "docs"
+      ]
+    },
+    {
+      "id": "node16",
+      "label": "Node 16",
+      "type": "dirEntry",
+      "dir": "~/.nvm/versions/node",
+      "prefix": "v16.",
+      "okDetail": "{match} (for the plugin build).",
+      "failDetail": "No Node 16 under {dir}. The plugin build before screenshots needs it.",
+      "stages": [
+        "docs"
+      ]
+    },
+    {
+      "id": "marketing-site",
+      "label": "Marketing site",
+      "type": "setting",
+      "field": "marketingSitePath",
+      "issueHint": " Set it in Settings.",
+      "localWpSite": {
+        "notFound": "The wpsp-docs folder is not inside a Local site, so the sync cannot reach its database.",
+        "stopped": "{site} is stopped. Start it in Local before the docs sync."
+      },
+      "stages": [
+        "docs"
+      ]
+    },
+    {
+      "id": "lite",
+      "label": "Lite checkout",
+      "type": "setting",
+      "field": "liteRepoPath",
+      "stages": [
+        "lite-sync",
+        "lite-publish",
+        "lite-wporg"
+      ]
+    },
+    {
+      "id": "svn",
+      "label": "Subversion",
+      "type": "script",
+      "hook": "wpsp-pro.hooks.mjs#svnCheck",
+      "stages": [
+        "lite-wporg"
+      ]
+    }
+  ],
+  "outputs": {
+    "dir": "{releaseDir}",
+    "docsDir": "docs-user",
+    "groups": [
+      {
+        "id": "notes",
+        "title": "Release notes",
+        "match": [
+          "^release\\.md$",
+          "^\\d+\\.\\d+\\.\\d+\\.\\d+\\.md$",
+          "^marketing-site-changes.*\\.md$"
+        ],
+        "main": [
+          "^release\\.md$"
+        ],
+        "secondary": [
+          "^\\d+\\.\\d+\\.\\d+\\.\\d+\\.md$"
+        ]
+      },
+      {
+        "id": "blog",
+        "title": "Blog post",
+        "mediaLabel": "Screenshots",
+        "match": [
+          "^blog\\.html$",
+          "^blog/",
+          "featured-image\\.[a-z]+$"
+        ],
+        "main": [
+          "^blog\\.html$"
+        ],
+        "secondary": [
+          "featured-image"
+        ]
+      },
+      {
+        "id": "newsletter",
+        "title": "Newsletter",
+        "match": [
+          "^newsletter"
+        ],
+        "main": [
+          "^newsletter\\.html$"
+        ]
+      },
+      {
+        "id": "social",
+        "title": "Social posts",
+        "match": [
+          "^(twitter|linkedin)[^/]*\\.txt$"
+        ],
+        "secondary": [
+          "-pro\\.txt$"
+        ]
+      },
+      {
+        "id": "slack",
+        "title": "Slack",
+        "match": [
+          "^slack[^/]*\\.txt$"
+        ],
+        "secondary": [
+          "-pro\\.txt$"
+        ]
+      },
+      {
+        "id": "notifications",
+        "title": "In-plugin notifications",
+        "match": [
+          "^notification[^/]*\\.html$"
+        ],
+        "secondary": [
+          "-pro\\.html$"
+        ]
+      },
+      {
+        "id": "reviews",
+        "title": "PR reviews",
+        "match": [
+          "^reviews/"
+        ],
+        "main": [
+          "^reviews/readme\\.md$"
+        ]
+      },
+      {
+        "id": "media",
+        "title": "Other media",
+        "match": []
+      },
+      {
+        "id": "other",
+        "title": "Other",
+        "match": []
+      }
+    ],
+    "fallback": {
+      "image": "media",
+      "other": "other"
+    }
+  },
+  "reset": {
+    "preselect": [
+      "^(simple-pay\\.php|readme(-lite)?\\.txt|docs/releases/|docs/PRODUCT\\.md|docs-user/|tests/e2e/admin/docs/|languages/|src/|includes/|views/)"
+    ],
+    "protect": [
+      ".claude/commands/wpsp-compare-builds.md",
+      ".claude/commands/wpsp-review-milestone.md",
+      ".claude/commands/wpsp-update-docs.md",
+      ".claude/release.config.example.json",
+      ".dockerignore",
+      ".eslintignore",
+      ".gitignore",
+      "CLAUDE.md",
+      "docs/release-console-plan.md",
+      "gruntfile.js",
+      "package.json"
+    ],
+    "hide": [
+      "tools/release-console/"
+    ]
+  },
+  "risk": {
+    "messages": {
+      "browser-write": "Sends a write request from your logged-in browser, for example to wpsimplepay.com.",
+      "svn-commit": "Commits or tags on wp.org SVN. It ships to every Lite site with auto-updates on.",
+      "browser-send": "Sends or schedules an email from your logged-in browser. A campaign goes to every subscribed contact and cannot be unsent.",
+      "browser-publish": "Publishes a post from your logged-in browser. A published in-plugin notification goes to every WP Simple Pay site."
+    },
+    "extra": [
+      {
+        "rule": "docs-sync",
+        "match": "\\bwpsp-docs\\s+sync\\b",
+        "reason": "Writes docs into the marketing site database.",
+        "before": "prune"
+      },
+      {
+        "rule": "npm-build",
+        "match": "\\bnpm\\s+run\\s+build(?![\\w:-])",
+        "before": "npm-publish",
+        "reason": "`npm run build` runs `grunt clean`, which deletes vendor/ and composer.lock and breaks the local site until `composer install`. `npx wp-scripts build` builds assets without that."
+      }
+    ],
+    "alsoMatch": {
+      "svn-commit": [
+        "\\bsvn-commit\\.sh\\b"
+      ]
+    }
+  },
+  "build": {
+    "script": "tools/release-console/scripts/build-plugin.sh",
+    "artifacts": [
+      {
+        "kind": "pro",
+        "label": "WP Simple Pay Pro",
+        "match": "^wp-simple-pay-pro"
+      },
+      {
+        "kind": "lite",
+        "label": "WP Simple Pay Lite",
+        "match": "^stripe"
+      }
+    ],
+    "exclude": [
+      "tools/"
+    ],
+    "ciWorkflow": "build-and-export.yml"
+  }
+}

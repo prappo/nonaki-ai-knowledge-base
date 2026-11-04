@@ -70,6 +70,7 @@ model Document {
   updatedAt  DateTime   @updatedAt
   proposals  Proposal[]
   versions   DocumentVersion[]
+  projects   ProjectDocument[]
 
   @@unique([sourceId, externalId])
 }
@@ -154,3 +155,71 @@ model AiUsage {
   @@index([createdAt])
   @@index([provider, createdAt])
 }
+
+model Project {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  status      String            @default("planning") // planning | active | on_hold | done
+  dueDate     DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  tasks       ProjectTask[]
+  documents   ProjectDocument[]
+
+  @@index([status])
+}
+
+model ProjectTask {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  status      String    @default("todo") // todo | doing | done
+  priority    String    @default("medium") // low | medium | high
+  dueDate     DateTime?
+  position    Int       @default(0) // order within its status column
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId, status, position])
+}
+
+/** Knowledge base documents a project references. */
+model ProjectDocument {
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([projectId, documentId])
+  @@index([documentId])
+}
+
+// ── Releases: laptop agents controlled from here ─────────────────────────
+
+/** A machine running release-agent, paired with a one-time code. */
+model ReleaseAgent {
+  id           String           @id @default(cuid())
+  name         String
+  tokenHash    String           @unique // sha256 of the agent's bearer token
+  capabilities String           @default("[]") // JSON: ["browser", "gh", …]
+  repos        String           @default("[]") // JSON: [{ id, name, recipe, stages, groups }]
+  version      String? // agent software version
+  lastSeenAt   DateTime?
+  createdAt    DateTime         @default(now())
+}
+
+model ReleasePairing {
+  code      String    @id // short one-time code shown in the UI
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdBy String
+  createdAt DateTime  @default(now())
+}
+
+
+

@@ -4,6 +4,7 @@ import { docIdsForSources } from "./scope";
 import { generateAnswer } from "./answer";
 import { getNumberSetting } from "./settings";
 import type { McpConfig } from "./share";
+import { callProjectTool, projectTools } from "./mcpProjects";
 
 /**
  * Minimal MCP (Model Context Protocol) server — stateless Streamable HTTP.
@@ -179,7 +180,7 @@ async function callTool(config: McpConfig, name: string, args: Record<string, un
     case "read_document":
       return readDocumentTool(config, args);
     default:
-      return null;
+      return callProjectTool(config, name, args);
   }
 }
 
@@ -212,13 +213,19 @@ export async function handleMcpMessage(
         serverInfo: { name: "nonaki-knowledge-base", version: "1.0.0" },
         instructions:
           "Tools for a company knowledge base: search it, ask it questions " +
-          "(AI answers with citations), and read full documents.",
+          "(AI answers with citations), and read full documents." +
+          (config.projectAccess === "write"
+            ? " Also plan work in Projects: create projects, break them into tasks on a " +
+              "todo / doing / done board, update tasks, and link the documents they rely on."
+            : config.projectAccess === "read"
+              ? " Also read Projects: list them and view their task boards."
+              : ""),
       });
     }
     case "ping":
       return rpcResult(id, {});
     case "tools/list":
-      return rpcResult(id, { tools: TOOLS });
+      return rpcResult(id, { tools: [...TOOLS, ...projectTools(config)] });
     case "tools/call": {
       const name = typeof params.name === "string" ? params.name : "";
       const args = (params.arguments ?? {}) as Record<string, unknown>;

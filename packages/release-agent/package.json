@@ -1,0 +1,49 @@
+{
+  "name": "release-agent",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Laptop-side release agent: runs a repo's release recipe and reports to a Nonaki control server.",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "release-agent": "dist/release-agent.mjs"
+  },
+  "scripts": {
+    "agent": "node src/cli/agent.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p console/tsconfig.web.json",
+    "check-recipe": "node src/cli/check-recipe.ts",
+    "sync-console-tests": "node test/console/sync.mjs",
+    "build": "esbuild src/cli/agent.ts console/server/index.ts --bundle --platform=node --format=esm --target=node20 --packages=external --outdir=dist --entry-names=[name] --log-level=warning && mv dist/agent.js dist/release-agent.mjs 2>/dev/null; mv dist/index.js dist/console-server.mjs 2>/dev/null; true",
+    "pack": "npm run build && npm pack --pack-destination ${PACK_DIR:-.}",
+    "build:ui": "vite build --config console/vite.config.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/yauzl": "^2.10.3",
+    "@vitejs/plugin-react": "6.1.2",
+    "dompurify": "3.4.17",
+    "esbuild": "0.28.2",
+    "highlight.js": "11.12.0",
+    "lucide-react": "1.56.0",
+    "marked": "18.1.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "^5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.296",
+    "yauzl": "^3.2.0"
+  },
+  "files": [
+    "dist",
+    "recipes",
+    "README.md"
+  ]
+}

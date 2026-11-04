@@ -102,3 +102,12 @@ export async function getChunkCollection() {
   const client = await getWeaviate();
   return client.collections.get<ChunkProperties>(CHUNK_COLLECTION);
 }
+
+/** Drop every chunk by deleting and recreating the collection (full data purge). */
+export async function resetChunkCollection(): Promise<void> {
+  const client = await getWeaviate();
+  if (await client.collections.exists(CHUNK_COLLECTION)) {
+    await client.collections.delete(CHUNK_COLLECTION);
+  }
+  await ensureSchema(client);
+}

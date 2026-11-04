@@ -1,0 +1,45 @@
+/*
+ * Nonaki's colours for the embedded Release Console: the console's blue
+ * accent becomes the app's teal (light #0e7f93, dark #35a8bd). Loaded after
+ * app.css, so only these tokens change.
+ */
+
+:root {
+	--blue: #0e7f93;
+	--blue-text: #0b6a7b;
+	--selected: rgba(14, 127, 147, 0.12);
+	--blue-tint: rgba(14, 127, 147, 0.11);
+	--focus: 0 0 0 3px rgba(14, 127, 147, 0.32);
+	--folder: #1590a5;
+	--brand-gradient: linear-gradient(180deg, #1794aa, #0e7f93 55%, #0b6a7b);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--blue: #35a8bd;
+		--blue-text: #5cbfd2;
+		--selected: rgba(53, 168, 189, 0.24);
+		--blue-tint: rgba(53, 168, 189, 0.18);
+		--focus: 0 0 0 3px rgba(53, 168, 189, 0.4);
+		--folder: #3ab0c4;
+	}
+}
+
+:root[data-theme='dark'] {
+	--blue: #35a8bd;
+	--blue-text: #5cbfd2;
+	--selected: rgba(53, 168, 189, 0.24);
+	--blue-tint: rgba(53, 168, 189, 0.18);
+	--focus: 0 0 0 3px rgba(53, 168, 189, 0.4);
+	--folder: #3ab0c4;
+}
+
+/* the logo tile and the other app-icon tile were WP Simple Pay blue */
+.brand-mark {
+	background: var(--brand-gradient);
+}
+
+.file-glyph.kind-zip-pro {
+	background: var(--brand-gradient);
+}
+

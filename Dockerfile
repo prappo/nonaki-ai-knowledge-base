@@ -28,6 +28,15 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN npx prisma generate
 RUN npm run build
 
+# The laptop-side release agent, packed for download from the Releases page
+# (GET /api/agent/download). It runs on laptops, never in this container.
+FROM node:24-slim AS agent
+WORKDIR /agent
+COPY packages/release-agent/package.json packages/release-agent/package-lock.json ./
+RUN npm ci --no-audit --no-fund --ignore-scripts
+COPY packages/release-agent/ ./
+RUN npm run build && npm run build:ui && mkdir -p /out && npm pack --pack-destination /out && mv /out/release-agent-*.tgz /out/release-agent.tgz
+
 FROM node:24-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -41,6 +50,9 @@ COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=agent /out/release-agent.tgz ./agent/release-agent.tgz
+# the Release Console UI the Releases page embeds (talks to agents through the tunnel)
+COPY --from=agent /agent/dist-ui ./public/release-console
 COPY docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 

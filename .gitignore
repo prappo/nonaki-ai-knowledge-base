@@ -55,3 +55,8 @@ docker-compose-experimental.yml
 next-env.d.ts
 
 /src/generated/prisma
+
+# release-agent package built for download (npm run build:agent)
+/agent
+# Release Console UI, built from packages/release-agent (npm run build:release-ui)
+/public/release-console

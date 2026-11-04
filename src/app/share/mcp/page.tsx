@@ -5,11 +5,34 @@ import { TopStrip } from "@/components/Shell";
 import { SourcePicker } from "@/components/SourcePicker";
 import { SharePageSkeleton } from "@/components/Skeleton";
 
+type ProjectAccess = "off" | "read" | "write";
+
 type McpConfig = {
   enabled: boolean;
   apiKey: string;
   sourceIds: string[];
+  projectAccess: ProjectAccess;
 };
+
+const PROJECT_READ_TOOLS = [
+  { name: "list_projects", desc: "projects with status and task progress" },
+  { name: "get_project", desc: "one project's task board and linked docs" },
+] as const;
+
+const PROJECT_WRITE_TOOLS = [
+  { name: "create_project", desc: "new project, optionally with a task breakdown" },
+  { name: "update_project", desc: "rename, re-describe, change status or due date" },
+  { name: "add_tasks", desc: "add tasks to a project" },
+  { name: "update_task", desc: "edit a task or move it todo → doing → done" },
+  { name: "delete_task", desc: "remove a task" },
+  { name: "link_documents / unlink_document", desc: "attach knowledge-base docs to a project" },
+] as const;
+
+const PROJECT_ACCESS: { value: ProjectAccess; label: string; desc: string }[] = [
+  { value: "off", label: "Off", desc: "No project tools" },
+  { value: "read", label: "Read only", desc: "View projects and boards" },
+  { value: "write", label: "Read & write", desc: "Agents can plan: create projects, add and move tasks" },
+];
 
 const TOOLS = [
   {
@@ -203,9 +226,37 @@ export default function ShareMcpPage() {
               label="Answers from these sources"
             />
             <div>
+              <span className="text-xs font-semibold">Project planning access</span>
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
+                {PROJECT_ACCESS.map((a) => {
+                  const active = (config.projectAccess ?? "write") === a.value;
+                  return (
+                    <button
+                      key={a.value}
+                      onClick={() => patch({ projectAccess: a.value })}
+                      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                        active
+                          ? "border-teal bg-teal-soft"
+                          : "border-line bg-card hover:border-teal"
+                      }`}
+                    >
+                      <div className={`text-[12px] font-semibold ${active ? "text-teal-dark" : ""}`}>
+                        {a.label}
+                      </div>
+                      <div className="mt-0.5 text-[10.5px] leading-[1.4] text-muted">{a.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
               <span className="text-xs font-semibold">Tools clients get</span>
               <div className="mt-1.5 space-y-1.5">
-                {TOOLS.map((t) => (
+                {[
+                  ...TOOLS,
+                  ...(config.projectAccess !== "off" ? PROJECT_READ_TOOLS : []),
+                  ...(config.projectAccess === "write" ? PROJECT_WRITE_TOOLS : []),
+                ].map((t) => (
                   <div key={t.name} className="flex items-baseline gap-2 text-[11px]">
                     <code className="rounded bg-chip px-1.5 py-0.5 font-mono text-[10.5px] text-teal-dark">
                       {t.name}
@@ -292,7 +343,8 @@ export default function ShareMcpPage() {
             </ol>
             <div className="mt-3 rounded-lg border border-warn-line bg-warn-bg px-3 py-2 text-[11px] leading-relaxed text-warn-text">
               <b>Good to know:</b> the API key grants read access to every source selected
-              above — treat it like a password. Rotate it with <b>Regenerate</b> if it ever
+              above{config.projectAccess === "write" ? " and lets clients edit your projects" : ""}
+              {" "}— treat it like a password. Rotate it with <b>Regenerate</b> if it ever
               leaks, and scope the sources to what external assistants should really see.
             </div>
           </div>

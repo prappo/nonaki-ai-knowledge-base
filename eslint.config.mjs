@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // standalone Node packages with their own tooling (run on the laptop, not in the app)
+    "packages/**",
   ]),
 ]);
 

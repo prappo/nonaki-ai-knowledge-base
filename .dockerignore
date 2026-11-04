@@ -13,3 +13,9 @@ dev.db
 *.db-journal
 coverage
 .DS_Store
+packages/*/node_modules
+packages/*/dist
+packages/*/*.tgz
+agent
+public/release-console
+packages/*/dist-ui
