@@ -309,3 +309,37 @@ body {
   height: 0;
   pointer-events: none;
 }
+
+/* Checklists (notes). The live editor renders items without data-type, so match by the list. */
+.notion-editor .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.15em;
+}
+.notion-editor .ProseMirror ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55em;
+}
+.notion-editor .ProseMirror ul[data-type="taskList"] > li > label {
+  flex: none;
+  margin-top: 0.32em;
+  user-select: none;
+}
+.notion-editor .ProseMirror ul[data-type="taskList"] > li > label input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-teal);
+  cursor: pointer;
+}
+.notion-editor .ProseMirror ul[data-type="taskList"] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+.notion-editor .ProseMirror ul[data-type="taskList"] > li[data-checked="true"] > div > p {
+  color: var(--color-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-ghost);
+}
+.notion-editor .ProseMirror ul[data-type="taskList"] > li ul[data-type="taskList"] {
+  margin-top: 0.2em;
+}

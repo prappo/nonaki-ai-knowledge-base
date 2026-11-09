@@ -39,8 +39,14 @@ export function VersionHistoryDialog({
   open,
   onClose,
   onRestored,
+  basePath,
+  copy,
 }: {
   documentId: string;
+  /** Where the versions live; a document's by default. Same API shape for anything else (notes). */
+  basePath?: string;
+  /** Wording for something other than a knowledge base document. */
+  copy?: { kept: string; empty: string; restore: string };
   currentTitle: string;
   currentVersion: number;
   currentContent: string;
@@ -54,6 +60,7 @@ export function VersionHistoryDialog({
   const [loaded, setLoaded] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const base = basePath ?? `/api/documents/${documentId}/versions`;
 
   useEffect(() => {
     if (!open) return;
@@ -61,14 +68,14 @@ export function VersionHistoryDialog({
     setSelectedId(null);
     setContent(null);
     setError(null);
-    fetch(`/api/documents/${documentId}/versions`)
+    fetch(base)
       .then((r) => r.json())
       .then((d) => {
         setVersions(d.versions ?? []);
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
-  }, [open, documentId]);
+  }, [open, base]);
 
   const select = useCallback(
     async (v: VersionMeta) => {
@@ -76,7 +83,7 @@ export function VersionHistoryDialog({
       setContent(null);
       setError(null);
       try {
-        const data = await fetch(`/api/documents/${documentId}/versions/${v.id}`).then((r) =>
+        const data = await fetch(`${base}/${v.id}`).then((r) =>
           r.json()
         );
         setContent(data.version?.content ?? "");
@@ -84,7 +91,7 @@ export function VersionHistoryDialog({
         setError("Could not load this version");
       }
     },
-    [documentId]
+    [base]
   );
 
   useEffect(() => {
@@ -109,7 +116,7 @@ export function VersionHistoryDialog({
     setRestoring(true);
     setError(null);
     try {
-      const res = await fetch(`/api/documents/${documentId}/versions/${selected.id}`, {
+      const res = await fetch(`${base}/${selected.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "restore" }),
@@ -148,8 +155,8 @@ export function VersionHistoryDialog({
               Version history — {currentTitle}
             </div>
             <div className="text-[11px] text-muted">
-              Currently at v{currentVersion} · older versions are kept every time the
-              content changes
+              Currently at v{currentVersion} ·{" "}
+              {copy?.kept ?? "older versions are kept every time the content changes"}
             </div>
           </div>
           <button
@@ -188,8 +195,7 @@ export function VersionHistoryDialog({
             ))}
             {loaded && versions.length === 0 && (
               <div className="px-4 py-6 text-xs leading-relaxed text-muted">
-                No previous versions yet — a snapshot is kept every time this
-                document&apos;s content changes.
+                {copy?.empty ?? "No previous versions yet — a snapshot is kept every time this document's content changes."}
               </div>
             )}
           </div>
@@ -250,7 +256,7 @@ export function VersionHistoryDialog({
         <div className="flex flex-none items-center gap-2.5 border-t border-hairline px-5 py-3">
           {error && <span className="text-[11.5px] text-orange">{error}</span>}
           <span className="ml-auto text-[11px] text-faint">
-            Restoring publishes the snapshot as a new version and re-indexes Weaviate
+            {copy?.restore ?? "Restoring publishes the snapshot as a new version and re-indexes Weaviate"}
           </span>
           <button
             onClick={restore}

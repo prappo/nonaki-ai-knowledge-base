@@ -166,6 +166,7 @@ model Project {
   updatedAt   DateTime          @updatedAt
   tasks       ProjectTask[]
   documents   ProjectDocument[]
+  notes       Note[]
 
   @@index([status])
 }
@@ -226,5 +227,64 @@ model ReleasePairing {
   createdAt DateTime  @default(now())
 }
 
+// ── Notes: personal notebooks, optionally shared with the team ───────────
 
+/** A folder of notes. Folders belong to one user. */
+model NoteFolder {
+  id        String   @id @default(cuid())
+  owner     String // email of the user it belongs to
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  notes     Note[]
 
+  @@index([owner, position])
+}
+
+/**
+ * A note: markdown, owned by one user. `shared` makes it readable and
+ * editable by every signed-in user; only the owner can share, trash or
+ * delete it.
+ */
+model Note {
+  id          String        @id @default(cuid())
+  owner       String // email of the user who created it
+  title       String        @default("")
+  content     String        @default("") // markdown
+  folderId    String?
+  folder      NoteFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  projectId   String?
+  project     Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  tags        String[]      @default([])
+  pinned      Boolean       @default(false)
+  shared      Boolean       @default(false)
+  version     Int           @default(1)
+  updatedBy   String? // email of the last person to edit it
+  documentId  String? // its knowledge base copy, once published
+  publishedAt DateTime? // when that copy was last refreshed
+  archivedAt  DateTime?
+  trashedAt   DateTime? // in the trash; purged after 30 days
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  versions    NoteVersion[]
+
+  @@index([owner, updatedAt])
+  @@index([shared, updatedAt])
+  @@index([folderId])
+  @@index([projectId])
+}
+
+/** An earlier state of a note, kept at most every few minutes while editing. */
+model NoteVersion {
+  id        String   @id @default(cuid())
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  version   Int // the version number this snapshot WAS
+  title     String
+  content   String
+  editedBy  String?
+  createdAt DateTime @default(now())
+
+  @@unique([noteId, version])
+  @@index([noteId, createdAt])
+}

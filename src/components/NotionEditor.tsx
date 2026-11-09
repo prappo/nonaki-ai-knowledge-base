@@ -5,6 +5,7 @@ import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/r
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Extension, type Range } from "@tiptap/core";
 import { Suggestion, type SuggestionProps } from "@tiptap/suggestion";
 import { htmlToMd, mdInlineToHtml, mdToHtml } from "@/lib/markdown";
@@ -85,6 +86,15 @@ const SLASH_ITEMS: SlashItem[] = [
   },
 ];
 
+/** Offered when the editor has checklists turned on. */
+const CHECKLIST_ITEM: SlashItem = {
+  title: "Checklist",
+  hint: "To-do list with checkboxes",
+  icon: "☑",
+  keywords: "todo task checklist checkbox check",
+  run: (e, r) => e.chain().focus().deleteRange(r).toggleTaskList().run(),
+};
+
 type SlashRender = () => {
   onStart: (props: SuggestionProps<SlashItem, SlashItem>) => void;
   onUpdate: (props: SuggestionProps<SlashItem, SlashItem>) => void;
@@ -92,11 +102,11 @@ type SlashRender = () => {
   onExit: () => void;
 };
 
-const SlashCommands = Extension.create<{ render: SlashRender | null }>({
+const SlashCommands = Extension.create<{ render: SlashRender | null; items: SlashItem[] }>({
   name: "slashCommands",
 
   addOptions() {
-    return { render: null };
+    return { render: null, items: SLASH_ITEMS };
   },
 
   addProseMirrorPlugins() {
@@ -108,7 +118,7 @@ const SlashCommands = Extension.create<{ render: SlashRender | null }>({
         command: ({ editor, range, props }) => props.run(editor, range),
         items: ({ query }) => {
           const q = query.toLowerCase().trim();
-          return SLASH_ITEMS.filter(
+          return this.options.items.filter(
             (i) => !q || i.title.toLowerCase().includes(q) || i.keywords.includes(q)
           );
         },
@@ -163,6 +173,7 @@ export function NotionEditor({
   autoFocus = false,
   wrapperClassName = "",
   contentClassName = "",
+  checklists = false,
 }: {
   value: string;
   onChange?: (markdown: string) => void;
@@ -173,6 +184,8 @@ export function NotionEditor({
   autoFocus?: boolean;
   wrapperClassName?: string;
   contentClassName?: string;
+  /** Checklists ("- [ ] item" in the markdown), with a "/" Checklist block. */
+  checklists?: boolean;
 }) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -218,10 +231,12 @@ export function NotionEditor({
       Placeholder.configure({
         placeholder: placeholder ?? "Type '/' for commands, or just write…",
       }),
+      ...(checklists ? [TaskList, TaskItem.configure({ nested: true })] : []),
       ...(readOnly
         ? []
         : [
             SlashCommands.configure({
+              items: checklists ? [...SLASH_ITEMS.slice(0, 6), CHECKLIST_ITEM, ...SLASH_ITEMS.slice(6)] : SLASH_ITEMS,
               render: () => ({
                 onStart: (props) => syncSlash(props, 0),
                 onUpdate: (props) => syncSlash(props, slashRef.current?.index ?? 0),
@@ -256,14 +271,14 @@ export function NotionEditor({
             }),
           ]),
     ];
-  }, [readOnly, placeholder]);
+  }, [readOnly, placeholder, checklists]);
 
   const editor = useEditor({
     immediatelyRender: false,
     editable: !readOnly,
     autofocus: autoFocus ? "end" : false,
     extensions,
-    content: mdToHtml(value),
+    content: mdToHtml(value, { checklists }),
     editorProps: {
       attributes: { class: contentClassName },
     },
@@ -279,8 +294,8 @@ export function NotionEditor({
   useEffect(() => {
     if (!editor || value === lastMd.current) return;
     lastMd.current = value;
-    editor.commands.setContent(mdToHtml(value), { emitUpdate: false });
-  }, [value, editor]);
+    editor.commands.setContent(mdToHtml(value, { checklists }), { emitUpdate: false });
+  }, [value, editor, checklists]);
 
   const fmt = useEditorState({
     editor,
@@ -355,7 +370,7 @@ export function NotionEditor({
     if (!editor || !pending) return;
     const p = pending;
     const multiline = p.original.includes("\n") || p.replacement.includes("\n");
-    const html = multiline ? mdToHtml(p.replacement) : mdInlineToHtml(p.replacement);
+    const html = multiline ? mdToHtml(p.replacement, { checklists }) : mdInlineToHtml(p.replacement);
     setPending(null);
     lock(false);
     editor.chain().focus().insertContentAt({ from: p.from, to: p.to }, html).run();
