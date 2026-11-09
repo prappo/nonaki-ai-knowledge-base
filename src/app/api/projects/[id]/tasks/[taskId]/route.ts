@@ -3,7 +3,7 @@ import { deleteTask, projectErrorResponse, updateTask } from "@/lib/projectStore
 
 type Ctx = { params: Promise<{ id: string; taskId: string }> };
 
-/** Update a task. body: { title?, notes?, status?, priority?, dueDate? } */
+/** Update a task. body: { title?, notes?, status?, priority?, dueDate?, assignee? } */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id, taskId } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

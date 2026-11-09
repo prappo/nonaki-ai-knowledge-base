@@ -224,6 +224,15 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
     </>
   ),
+  tasks: (
+    <>
+      <rect x="3" y="5" width="6" height="6" rx="1" />
+      <path d="M4.5 8l1 1 2-2" />
+      <path d="M13 8h8" />
+      <rect x="3" y="14" width="6" height="6" rx="1" />
+      <path d="M13 17h8" />
+    </>
+  ),
   projects: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="2" />

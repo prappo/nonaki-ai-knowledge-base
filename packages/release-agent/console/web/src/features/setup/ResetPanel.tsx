@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge } from '../../components/Badge.tsx';
 import { api, type Backup, type DiscardCandidate, type ResetPlan } from '../../lib/api.ts';
 import { formatDateTime, formatSize } from '../../lib/format.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 const KIND_LABEL: Record<DiscardCandidate[ 'kind' ], string> = {
 	modified: 'Modified',
@@ -157,7 +158,9 @@ export function ResetPanel( { onChanged }: { onChanged: () => void } ) {
 						files. Any edits you made yourself to those files go too. A backup is taken first, so you can restore it below.
 					</p>
 
-					{ changes.length === 0 ? (
+					{ ! plan && message?.tone !== 'error' ? (
+						<Spinner block label="Looking for uncommitted changes…" />
+					) : changes.length === 0 ? (
 						<p className="note">There are no uncommitted changes to discard.</p>
 					) : (
 						<>

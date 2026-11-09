@@ -21,6 +21,7 @@ import {
 	Plus,
 	ShieldCheck,
 	Square,
+	Trash2,
 	TriangleAlert,
 	Wrench,
 	Zap,
@@ -39,6 +40,7 @@ type Mode = 'ask' | 'risky';
 
 const MODE_KEY = 'release-console:agent-mode';
 const SIDEBAR_KEY = 'release-console:agent-sidebar';
+const CHROME_KEY = 'release-console:agent-chrome';
 
 const SUGGESTIONS = [
 	{ title: 'Explain this repo', prompt: 'Give me a short tour of this repo: what it is, how it is laid out, and where to start reading.' },
@@ -300,7 +302,12 @@ export function AgentApp() {
 	const [ error, setError ] = useState<string | null>( null );
 	const [ busy, setBusy ] = useState( false );
 	const [ mode, setMode ] = useState<Mode>( () => ( load<string>( MODE_KEY, 'ask' ) === 'risky' ? 'risky' : 'ask' ) );
-	const [ chrome, setChrome ] = useState( false );
+	// Chrome is on by default, like every other MCP server; turning it off is remembered
+	const [ chrome, setChromeState ] = useState( () => load( CHROME_KEY, true ) );
+	const setChrome = ( value: boolean ) => {
+		setChromeState( value );
+		store( CHROME_KEY, value );
+	};
 	const [ sidebar, setSidebar ] = useState( () => load( SIDEBAR_KEY, true ) );
 	const [ prefill, setPrefill ] = useState<{ text: string; at: number } | null>( null );
 	const live = useRunStream( selected, CHAT );
@@ -355,6 +362,38 @@ export function AgentApp() {
 		pinned.current = true;
 		setSelected( id );
 	};
+
+	// which chat (head run id) or "all" is asking "delete?", and whether it's being deleted
+	const [ confirmDelete, setConfirmDelete ] = useState<string | null>( null );
+	const [ deleting, setDeleting ] = useState( false );
+
+	async function deleteChat( headId: string ) {
+		setDeleting( true );
+		try {
+			const { deleted } = await api.deleteChat( headId );
+			if ( selected && deleted.includes( selected ) ) choose( null );
+			setConfirmDelete( null );
+			await refresh();
+		} catch ( caught ) {
+			setError( ( caught as Error ).message );
+		} finally {
+			setDeleting( false );
+		}
+	}
+
+	async function deleteAllChats() {
+		setDeleting( true );
+		try {
+			await api.deleteAllChats();
+			choose( null );
+			setConfirmDelete( null );
+			await refresh();
+		} catch ( caught ) {
+			setError( ( caught as Error ).message );
+		} finally {
+			setDeleting( false );
+		}
+	}
 
 	/** Free the repo's one session slot: finish another chat that's waiting for a reply. */
 	async function freeSlot(): Promise<void> {
@@ -440,24 +479,79 @@ export function AgentApp() {
 							const heading = group !== lastGroup ? group : null;
 							lastGroup = group;
 							const state = chat.head.status;
+							const busy = state === 'running' || state === 'waiting' || state === 'awaiting_reply';
+							const asking = confirmDelete === chat.head.id;
 							return (
 								<div key={ chat.head.id }>
 									{ heading && <div className="chat-list-group">{ heading }</div> }
-									<button
-										type="button"
-										className={ `chat-list-item${ selected === chat.head.id || shown?.resumedFrom === chat.head.id ? ' is-selected' : '' }` }
-										onClick={ () => choose( chat.head.id ) }
-										title={ chat.title }
-									>
-										{ chat.head.stageId === 'chat-chrome' ? <Globe size={ 14 } /> : <MessageSquare size={ 14 } /> }
-										<span className="chat-list-title">{ chat.title }</span>
-										{ ( state === 'running' || state === 'waiting' ) && <span className={ `chat-dot${ state === 'waiting' ? ' is-waiting' : '' }` } /> }
-									</button>
+									{ asking ? (
+										<div className="chat-list-confirm" role="group" aria-label={ `Delete ${ chat.title }?` }>
+											<span className="chat-list-title">Delete this chat?</span>
+											<button type="button" className="chat-confirm-btn is-danger" disabled={ deleting } onClick={ () => void deleteChat( chat.head.id ) }>
+												{ deleting ? 'Deleting…' : 'Delete' }
+											</button>
+											<button type="button" className="chat-confirm-btn" disabled={ deleting } onClick={ () => setConfirmDelete( null ) }>
+												Cancel
+											</button>
+										</div>
+									) : (
+										<div className={ `chat-list-row${ selected === chat.head.id || shown?.resumedFrom === chat.head.id ? ' is-selected' : '' }` }>
+											<button
+												type="button"
+												className="chat-list-item"
+												onClick={ () => choose( chat.head.id ) }
+												title={ chat.title }
+											>
+												{ chat.head.stageId === 'chat-chrome' ? <Globe size={ 14 } /> : <MessageSquare size={ 14 } /> }
+												<span className="chat-list-title">{ chat.title }</span>
+												{ ( state === 'running' || state === 'waiting' ) && <span className={ `chat-dot${ state === 'waiting' ? ' is-waiting' : '' }` } /> }
+											</button>
+											<button
+												type="button"
+												className="chat-list-delete"
+												disabled={ busy }
+												onClick={ () => setConfirmDelete( chat.head.id ) }
+												title={ busy ? 'Stop or finish this chat before deleting it' : 'Delete chat' }
+												aria-label={ `Delete ${ chat.title }` }
+											>
+												<Trash2 size={ 13 } />
+											</button>
+										</div>
+									) }
 								</div>
 							);
 						} ) }
 					</nav>
-					{ chats.length > 0 && <div className="chat-sidebar-foot">{ formatCost( total ) || '$0' } across { chats.length } chat{ chats.length === 1 ? '' : 's' }</div> }
+					{ chats.length > 0 && (
+						<div className="chat-sidebar-foot">
+							{ confirmDelete === 'all' ? (
+								<div className="chat-foot-confirm" role="group" aria-label="Delete all chats?">
+									<span>Delete all { chats.length } chats?</span>
+									<button type="button" className="chat-confirm-btn is-danger" disabled={ deleting } onClick={ () => void deleteAllChats() }>
+										{ deleting ? 'Deleting…' : 'Delete all' }
+									</button>
+									<button type="button" className="chat-confirm-btn" disabled={ deleting } onClick={ () => setConfirmDelete( null ) }>
+										Cancel
+									</button>
+								</div>
+							) : (
+								<>
+									<span>
+										{ formatCost( total ) || '$0' } across { chats.length } chat{ chats.length === 1 ? '' : 's' }
+									</span>
+									<button
+										type="button"
+										className="chat-foot-delete"
+										disabled={ Boolean( current && isActive( current ) ) }
+										title={ current && isActive( current ) ? 'Stop or finish the running chat first' : 'Delete every chat' }
+										onClick={ () => setConfirmDelete( 'all' ) }
+									>
+										Delete all
+									</button>
+								</>
+							) }
+						</div>
+					) }
 				</aside>
 			) }
 

@@ -8,6 +8,7 @@ import { api, buildFileUrl, type BuildRecord } from '../../lib/api.ts';
 import { formatDateTime, formatDuration, formatSize, relativeTime } from '../../lib/format.ts';
 import { CiBuildPanel } from './CiBuildPanel.tsx';
 import { ZipBrowser } from './ZipBrowser.tsx';
+import { Spinner } from '../../components/Spinner.tsx';
 
 const STATUS: Record<BuildRecord[ 'status' ], { label: string; tone: Tone }> = {
 	running: { label: 'Building', tone: 'accent' },
@@ -348,6 +349,10 @@ export function BuildsPage( { onBrowse }: { onBrowse: ( id: string, zip: string 
 
 				{ shown ? (
 					<BuildDetail labels={ labels } key={ shown.id } build={ shown } onBrowse={ onBrowse } />
+				) : ! builds && ! error ? (
+					<div className="panel">
+						<Spinner block label="Loading builds…" />
+					</div>
 				) : (
 					builds && (
 						<div className="panel">

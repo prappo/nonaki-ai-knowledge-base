@@ -1,10 +1,11 @@
-import { Cloud, ExternalLink, GitBranch, Play, RotateCw } from 'lucide-react';
+import { Cloud, ExternalLink, FlaskConical, GitBranch, Play, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, type Tone } from '../../components/Badge.tsx';
 import { ProgressIcon } from '../../components/icons.tsx';
 import { api, type CiBuildRun } from '../../lib/api.ts';
 import { relativeTime } from '../../lib/format.ts';
 import { safeExternalUrl } from '../../lib/url.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 /** How long to keep polling after a dispatch, waiting for its run to show up. */
 const DISPATCH_WATCH_MS = 60_000;
@@ -28,6 +29,8 @@ export function ciRunState( run: CiBuildRun ): { label: string; tone: Tone; icon
 export function CiBuildPanel() {
 	const [ current, setCurrent ] = useState<string | null>( null );
 	const [ branch, setBranch ] = useState( '' );
+	const [ branches, setBranches ] = useState<string[]>( [] );
+	const [ beta, setBeta ] = useState( false );
 	const [ runs, setRuns ] = useState<CiBuildRun[] | null | undefined>( undefined );
 	const [ error, setError ] = useState<string | null>( null );
 	const [ notice, setNotice ] = useState<string | null>( null );
@@ -40,6 +43,7 @@ export function CiBuildPanel() {
 			const data = await api.ciBuilds();
 
 			setCurrent( data.branch );
+			setBranches( data.branches ?? [] );
 			setRuns( data.runs );
 		} catch ( caught ) {
 			setError( ( caught as Error ).message );
@@ -74,8 +78,13 @@ export function CiBuildPanel() {
 		setStarting( true );
 
 		try {
-			await api.startCiBuild( target );
-			setNotice( `Started the GitHub build for ${ target }. It shows below once GitHub queues it.` );
+			const { source } = await api.startCiBuild( target, beta );
+
+			setNotice(
+				source
+					? `Started the beta build: master + PR #${ source.pr }'s changes, stamped ${ source.version ?? 'with the target version plus -beta' }. The zip is attached to PR #${ source.pr } once it finishes.`
+					: `Started the GitHub build for ${ target }. It shows below once GitHub queues it.`
+			);
 			setWatchUntil( Date.now() + DISPATCH_WATCH_MS );
 			await load();
 		} catch ( caught ) {
@@ -119,16 +128,37 @@ export function CiBuildPanel() {
 							placeholder={ current ? `${ current } (current)` : 'Branch name' }
 							spellCheck={ false }
 							autoComplete="off"
+							list="ci-branch-suggestions"
 						/>
+						{ /* The browser filters these as you type, newest branch first. */ }
+						<datalist id="ci-branch-suggestions">
+							{ branches.map( ( name ) => (
+								<option key={ name } value={ name } />
+							) ) }
+						</datalist>
 					</label>
+					<div className="segmented" role="radiogroup" aria-label="How to version the build">
+						<button type="button" role="radio" aria-checked={ ! beta } aria-pressed={ ! beta } onClick={ () => setBeta( false ) }>
+							Normal
+						</button>
+						<button type="button" role="radio" aria-checked={ beta } aria-pressed={ beta } onClick={ () => setBeta( true ) }>
+							<FlaskConical size={ 13 } /> Beta
+						</button>
+					</div>
 					<button type="submit" className="btn btn-primary" disabled={ starting || ( ! branch.trim() && ! current ) }>
 						<Play size={ 14 } />
-						{ starting ? 'Starting…' : branch.trim() ? 'Build branch' : 'Build current branch' }
+						{ starting ? 'Starting…' : `${ branch.trim() ? 'Build branch' : 'Build current branch' }${ beta ? ' as beta' : '' }` }
 					</button>
 				</form>
+				<p className="muted small ci-kind-hint">
+					{ beta
+						? 'Beta: the quick fix to send a customer. Built from master (what they run) plus only this branch\'s PR changes, Pro only, stamped like 4.17.6-beta so the real release updates over it. Nothing is merged or pushed; the PR still ships in its release. Needs an open PR.'
+						: 'Normal: the branch as pushed, Pro and Lite. A release/* or hotfix/* branch gets the plain version; any other branch is stamped like 4.17.6-3556-branch-name.' }
+				</p>
 				{ error && <p className="callout callout-danger">{ error }</p> }
 				{ notice && ! error && <p className="callout callout-neutral">{ notice }</p> }
 
+				{ runs === undefined && ! error && <Spinner label="Asking GitHub for recent builds…" /> }
 				{ runs === null && <p className="muted small">Could not ask GitHub for recent builds. Check that `gh` is installed and signed in.</p> }
 				{ runs && runs.length > 0 && (
 					<ul className="grouped-list ci-runs">

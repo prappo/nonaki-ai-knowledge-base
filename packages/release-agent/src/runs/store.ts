@@ -22,6 +22,8 @@ export const KEEP_RUNS = 100;
 export interface RunStore {
 	save( run: RunSnapshot ): void;
 	loadAll(): RunSnapshot[];
+	/** Forgets one saved run. Unknown ids are ignored. */
+	remove( id: string ): void;
 }
 
 function isSnapshot( value: unknown ): value is RunSnapshot {
@@ -113,6 +115,18 @@ export class FileRunStore implements RunStore {
 		return runs.sort( ( a, b ) => b.startedAt - a.startedAt );
 	}
 
+	remove( id: string ): void {
+		if ( ! ID_PATTERN.test( id ) ) {
+			return;
+		}
+
+		try {
+			rmSync( path.join( this.directory, `${ id }.json` ), { force: true } );
+		} catch ( error ) {
+			this.onError( `Could not delete run ${ id }: ${ ( error as Error ).message }` );
+		}
+	}
+
 	private prune(): void {
 		const files = readdirSync( this.directory )
 			.filter( ( name ) => name.endsWith( '.json' ) )
@@ -139,5 +153,9 @@ export class MemoryRunStore implements RunStore {
 
 	loadAll(): RunSnapshot[] {
 		return [ ...this.saved.values() ].sort( ( a, b ) => b.startedAt - a.startedAt );
+	}
+
+	remove( id: string ): void {
+		this.saved.delete( id );
 	}
 }

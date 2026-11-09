@@ -6,6 +6,7 @@ import { languageFor } from '../../lib/highlight.ts';
 import { EmptyState } from '../../components/EmptyState.tsx';
 import { api, zipFileUrl, type ZipFileContent } from '../../lib/api.ts';
 import { formatSize } from '../../lib/format.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 const IMAGE = /\.(png|jpe?g|gif|webp|svg)$/i;
 
@@ -55,6 +56,7 @@ export function ZipFileView( { buildId, zip, path }: { buildId: string; zip: str
 			</header>
 			<div className="viewer-body viewer-body-flush">
 				{ error && <p className="callout callout-danger zip-file-callout">{ error }</p> }
+				{ ! file && ! isImage && ! error && <Spinner block label="Loading the file…" /> }
 				{ isImage && <img className="viewer-image zip-image" src={ zipFileUrl( buildId, zip, path ) } alt={ path } /> }
 				{ file?.binary && (
 					<EmptyState icon={ <FileQuestion size={ 24 } /> } title="Binary file">

@@ -107,6 +107,10 @@ export class Agent {
             ? path.join(c.repo.path, c.opened.recipe.consoleState)
             : path.join(agentHome(), "repos", c.repo.id),
           ...(this.fake ? { RELEASE_AGENT_FAKE: "1" } : {}),
+          // sessions get the control server's MCP server with this agent's token
+          RELEASE_SERVER: this.config.server,
+          RELEASE_AGENT_TOKEN: this.config.token,
+          RELEASE_CHROME: this.capabilities.includes("browser") ? "1" : "0",
         },
         stdio: ["ignore", "pipe", "inherit"],
       });

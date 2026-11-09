@@ -170,10 +170,13 @@ model Project {
   @@index([status])
 }
 
+/** A task: on a project's board, or standalone (projectId null) on the Tasks page. */
 model ProjectTask {
   id          String    @id @default(cuid())
-  projectId   String
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    String? // email of the user it's assigned to (Supabase auth), or null
+  createdBy   String? // email of the user who created it, or "system"
   title       String
   notes       String?
   status      String    @default("todo") // todo | doing | done
@@ -185,6 +188,8 @@ model ProjectTask {
   updatedAt   DateTime  @updatedAt
 
   @@index([projectId, status, position])
+  @@index([assignee, status])
+  @@index([status, dueDate])
 }
 
 /** Knowledge base documents a project references. */

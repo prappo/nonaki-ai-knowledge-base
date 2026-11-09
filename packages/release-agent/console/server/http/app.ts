@@ -35,7 +35,7 @@ import { diffFor, runGit, workingTreeChanges, type GitRunner } from '../repo/git
 import { RunConflictError, type GateAnswer, type RunEvent, type RunManager } from '../runs/runner.ts';
 import { planSequence, SequenceError, type Sequencer } from '../runs/sequence.ts';
 import { ProbeCache } from '../../../src/recipe/hooks.ts';
-import { CiBuildError, parseBranch, type CiBuilds } from '../release/ciBuilds.ts';
+import { CiBuildError, parseBranch, pushedBranches, type CiBuilds } from '../release/ciBuilds.ts';
 import { findStage, localBuildChoices, resolveStageProbes, STAGE_GROUPS, stagePrompt, stageStates, type StageContext } from '../release/stages.ts';
 import { libraryRoot, parseVersion, releaseBranches, VERSION_HINT, type ReleaseVersion } from '../release/version.ts';
 import { docDiff, listUserDocs } from '../release/docs.ts';
@@ -772,23 +772,26 @@ export function createApp( options: AppOptions ): http.RequestListener {
 				throw new HttpError( 404, 'GitHub builds are not available.' );
 			}
 
-			// GET /api/ci-builds — the current branch and the workflow's recent runs (null when GitHub could not be asked)
+			// GET /api/ci-builds — the current branch, the pushed branches to suggest, and the workflow's recent runs (null when GitHub could not be asked)
 			if ( method === 'GET' ) {
-				const [ branch, runs ] = await Promise.all( [ currentBranch( root ), ciBuilds.recent() ] );
+				const [ branch, branches, runs ] = await Promise.all( [ currentBranch( root ), pushedBranches( root ), ciBuilds.recent() ] );
 
-				sendJson( res, 200, { branch, runs } );
+				sendJson( res, 200, { branch, branches, runs } );
 				return;
 			}
 
-			// POST /api/ci-builds { branch } — run the build workflow on a pushed branch
+			// POST /api/ci-builds { branch, beta? } — run the build workflow on a pushed branch
 			if ( method === 'POST' ) {
 				const body = await readJson( req );
 
 				try {
 					const branch = parseBranch( body.branch );
+					// Only a literal true makes a beta build, so a stray value never does.
+					const beta = body.beta === true;
 
-					await ciBuilds.dispatch( branch );
-					sendJson( res, 202, { branch } );
+					const source = await ciBuilds.dispatch( branch, { beta } );
+
+					sendJson( res, 202, { branch, beta, source } );
 				} catch ( error ) {
 					throw asHttpError( error );
 				}
@@ -954,6 +957,34 @@ export function createApp( options: AppOptions ): http.RequestListener {
 				}
 				return;
 			}
+		}
+
+		// POST /api/chat/delete-all — delete every Agent session
+		if ( resource === 'chat' && method === 'POST' && parts.length === 3 && parts[ 2 ] === 'delete-all' ) {
+			if ( ! options.chats ) {
+				throw new HttpError( 404, 'Agent sessions are not available.' );
+			}
+
+			try {
+				sendJson( res, 200, { deleted: options.chats.deleteAll() } );
+			} catch ( error ) {
+				throw asHttpError( error );
+			}
+			return;
+		}
+
+		// POST /api/chat/:id/delete — delete one chat (the session and the ones that resumed it)
+		if ( resource === 'chat' && method === 'POST' && parts.length === 4 && parts[ 3 ] === 'delete' ) {
+			if ( ! options.chats ) {
+				throw new HttpError( 404, 'Agent sessions are not available.' );
+			}
+
+			try {
+				sendJson( res, 200, { deleted: options.chats.deleteConversation( parts[ 2 ] ) } );
+			} catch ( error ) {
+				throw asHttpError( error, error instanceof Error && error.message === 'No such run.' ? 404 : 409 );
+			}
+			return;
 		}
 
 		// per-run routes, for release runs (/api/runs/…) and Agent sessions (/api/chat/…)

@@ -50,7 +50,22 @@ export const WPSP_ROOT =
   process.env.WPSP_ROOT ?? "/Users/prince/Local Sites/wpsp/app/public/wp-content/plugins/wp-simple-pay-pro";
 
 const opened = await openRecipe(path.join(import.meta.dirname, "../../recipes/wpsp-pro.recipe.json"));
-export const { recipe, hooks } = opened;
+
+/**
+ * Stages the recipe adds on top of the console's pipeline. The console has
+ * no counterpart to compare them with, so the adapter leaves them out, and
+ * test/wpsp-docs-site-pr.test.ts covers them instead.
+ */
+export const ENGINE_ONLY_STAGES = new Set(["docs-site-pr"]);
+
+export const recipe: typeof opened.recipe = {
+  ...opened.recipe,
+  stages: opened.recipe.stages.filter((s) => !ENGINE_ONLY_STAGES.has(s.id)),
+  checks: opened.recipe.checks?.map((c) =>
+    c.stages ? { ...c, stages: c.stages.filter((id) => !ENGINE_ONLY_STAGES.has(id)) } : c,
+  ),
+};
+export const { hooks } = opened;
 
 // ── version.ts ───────────────────────────────────────────────────────────
 

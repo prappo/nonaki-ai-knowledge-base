@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, type SequencePlan, type SequenceSnapshot, type StageState } from '../../lib/api.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 function titleOf( stages: StageState[], id: string ): string {
 	return stages.find( ( stage ) => stage.id === id )?.title ?? id;
@@ -43,6 +44,7 @@ export function RunAllPreview( {
 				stops early. When a command reports it is done, the next stage starts on its own.
 			</p>
 			{ error && <p className="error-text small-text">{ error }</p> }
+			{ ! plan && ! error && <Spinner label="Working out the stages…" /> }
 			{ plan && (
 				<>
 					<ol className="run-all-list">

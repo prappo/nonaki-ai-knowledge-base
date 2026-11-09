@@ -818,6 +818,77 @@ export class RunManager {
 		this.current = null;
 	}
 
+	/**
+	 * Deletes a conversation: this run, the runs it resumed and the runs that
+	 * resumed it, from memory and from the store. Returns the deleted ids.
+	 * Refused while any of them is still running.
+	 */
+	deleteConversation( id: string ): string[] {
+		const runs = new Map( this.saved );
+
+		if ( this.current ) {
+			runs.set( this.current.id, this.current.snapshot() );
+		}
+
+		if ( ! runs.has( id ) ) {
+			throw new Error( 'No such run.' );
+		}
+
+		// walk back to the first session, then collect everything resumed from it
+		let root = runs.get( id )!;
+
+		while ( root.resumedFrom && runs.has( root.resumedFrom ) ) {
+			root = runs.get( root.resumedFrom )!;
+		}
+
+		const chain = new Set( [ root.id ] );
+		let grew = true;
+
+		while ( grew ) {
+			grew = false;
+
+			for ( const run of runs.values() ) {
+				if ( run.resumedFrom && chain.has( run.resumedFrom ) && ! chain.has( run.id ) ) {
+					chain.add( run.id );
+					grew = true;
+				}
+			}
+		}
+
+		if ( this.current && chain.has( this.current.id ) && this.current.isActive ) {
+			throw new Error( 'That chat is still running. Stop it first, then delete it.' );
+		}
+
+		for ( const runId of chain ) {
+			this.saved.delete( runId );
+			this.store?.remove( runId );
+		}
+
+		if ( this.current && chain.has( this.current.id ) ) {
+			this.current = null;
+		}
+
+		return [ ...chain ];
+	}
+
+	/** Deletes every run, from memory and from the store. Refused while one is running. */
+	deleteAll(): number {
+		if ( this.current?.isActive ) {
+			throw new Error( 'A chat is still running. Stop it first, then delete the chats.' );
+		}
+
+		const ids = new Set( [ ...this.saved.keys(), ...( this.current ? [ this.current.id ] : [] ) ] );
+
+		for ( const runId of ids ) {
+			this.store?.remove( runId );
+		}
+
+		this.saved.clear();
+		this.current = null;
+
+		return ids.size;
+	}
+
 	/** Continues an ended run's Claude session with a new message. */
 	resume( id: string, message: string ): Run {
 		const previous = this.snapshot( id );

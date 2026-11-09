@@ -9,6 +9,7 @@ import { changedFields, diffBlocks } from '../../lib/blockDiff.ts';
 import { ApiError, api, rawUrl, type DocDiff, type FileEntry, type TextFile } from '../../lib/api.ts';
 import { formatDateTime, formatSize } from '../../lib/format.ts';
 import { safeExternalUrl } from '../../lib/url.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 /** Field names shown as words, e.g. `source_url` → `Source url`. */
 function fieldLabel( key: string ): string {
@@ -202,7 +203,7 @@ function DocChanges( { version, path, markdown }: { version: string; path: strin
 	}
 
 	if ( ! diff ) {
-		return <p className="muted small-text">Loading changes…</p>;
+		return <Spinner block label="Loading changes…" />;
 	}
 
 	// A new article has nothing to compare with: the visual view shows it all as added.
@@ -329,6 +330,8 @@ export function FileViewer( {
 
 			<div className="viewer-body">
 				{ error && <p className="error-text" role="alert">{ error }</p> }
+
+				{ ! file && ! error && entry.kind !== 'image' && mode !== 'changes' && <Spinner block label="Loading the file…" /> }
 
 				{ entry.kind === 'image' && <img className="viewer-image" src={ `${ rawUrl( entry.path ) }?v=${ entry.modifiedAt }` } alt={ entry.path } /> }
 

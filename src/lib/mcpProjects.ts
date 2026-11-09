@@ -37,6 +37,10 @@ const TASK_FIELDS = {
   status: { type: "string", enum: TASK_STATUSES, description: "Board column (default todo)" },
   priority: { type: "string", enum: TASK_PRIORITIES, description: "Default medium" },
   dueDate: DATE,
+  assignee: {
+    type: ["string", "null"],
+    description: "Email of the app user to assign it to, or null to unassign",
+  },
 };
 
 const READ_TOOLS = [
@@ -126,7 +130,7 @@ const WRITE_TOOLS = [
   {
     name: "update_task",
     description:
-      "Update a task by id: rename it, edit notes, change priority or due date, " +
+      "Update a task by id: rename it, edit notes, change priority, due date or assignee, " +
       "or move it between columns with status (todo → doing → done).",
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     inputSchema: {
@@ -202,6 +206,7 @@ async function projectView(id: string) {
         title: t.title,
         priority: t.priority,
         dueDate: day(t.dueDate),
+        assignee: t.assignee,
         ...(t.notes ? { notes: t.notes } : {}),
       }));
   return {

@@ -286,6 +286,38 @@ a {
 	animation: spin 0.9s linear infinite;
 }
 
+.spinner {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--secondary);
+	font-size: 12px;
+}
+
+.spinner .spin {
+	flex: none;
+	color: var(--blue);
+}
+
+.spinner-block {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+	padding: 32px 16px;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
 @keyframes spin {
 	to {
 		transform: rotate(360deg);
@@ -2431,8 +2463,20 @@ button.list-row:hover,
 	min-width: 0;
 }
 
-.build-form .ci-branch + .btn-primary {
+.build-form .ci-branch + .btn-primary,
+.build-form .ci-branch ~ .segmented,
+.build-form .ci-branch ~ .btn-primary {
 	align-self: flex-end;
+}
+
+.build-form .segmented button {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.ci-kind-hint {
+	margin: 10px 0 0;
 }
 
 .ci-runs {

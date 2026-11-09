@@ -117,6 +117,8 @@ async function auditAction(agentName: string, agentId: string, repoId: string, p
       return [data.allow ? "agent.approved" : "agent.denied", `${data.allow ? "Approved" : "Denied"} an action in an Agent session ${where}`];
     }
     if (/^\/api\/chat\/[^/]+\/stop$/.test(path)) return ["agent.session_stopped", `Stopped an Agent session ${where}`];
+    if (path === "/api/chat/delete-all") return ["agent.sessions_deleted", `Deleted all Agent sessions ${where}`];
+    if (/^\/api\/chat\/[^/]+\/delete$/.test(path)) return ["agent.session_deleted", `Deleted an Agent session ${where}`];
     if (/^\/api\/runs\/[^/]+\/resume$/.test(path)) return ["release.run_resumed", `Resumed a run ${where}`];
     if (/^\/api\/runs\/[^/]+\/gates\//.test(path) && data.type === "approval") {
       return [data.allow ? "release.approved" : "release.denied", `${data.allow ? "Approved" : "Denied"} a risky action ${where}`];
@@ -126,7 +128,7 @@ async function auditAction(agentName: string, agentId: string, repoId: string, p
     if (path === "/api/file") return ["release.file_saved", `Edited ${String(data.path)} ${where}`];
     if (path === "/api/config") return ["release.settings_saved", `Saved release settings ${where}`];
     if (path === "/api/builds") return ["release.build_started", `Started a local build ${where}`];
-    if (path === "/api/ci-builds") return ["release.ci_build_started", `Started a CI build of ${String(data.branch)} ${where}`];
+    if (path === "/api/ci-builds") return ["release.ci_build_started", `Started a ${data.beta === true ? "beta " : ""}CI build of ${String(data.branch)} ${where}`];
     if (path === "/api/reset/discard") return ["release.changes_discarded", `Discarded ${Array.isArray(data.paths) ? data.paths.length : 0} change(s) ${where}`];
     if (path === "/api/reset/restore") return ["release.backup_restored", `Restored a discard backup ${where}`];
     if (path === "/api/reset/console-data") return ["release.data_deleted", `Deleted release console data ${where}`];

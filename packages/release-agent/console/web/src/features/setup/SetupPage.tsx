@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, Info, RefreshCw, Save, XCircle } from 'luc
 import { useEffect, useState } from 'react';
 import { ResetPanel } from './ResetPanel.tsx';
 import { ApiError, api, type ConfigIssue, type ConfigState, type HealthCheck } from '../../lib/api.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 function CheckIcon( { status }: { status: HealthCheck[ 'status' ] } ) {
 	switch ( status ) {
@@ -80,6 +81,7 @@ function SettingsForm( { onSaved }: { onSaved: () => void } ) {
 				</div>
 			</header>
 			<div className="panel-body form">
+				{ ! state && ! error && <Spinner block label="Loading settings…" /> }
 				{ ( state?.fields ?? [] ).map( ( item ) => (
 					<label className="form-row" key={ item.key }>
 						<span className="form-label">{ item.label }</span>

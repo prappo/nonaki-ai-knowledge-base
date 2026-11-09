@@ -6,6 +6,7 @@ import type { RunSummary } from '../../lib/api.ts';
 import { formatCost, formatDuration, relativeTime } from '../../lib/format.ts';
 import type { ConsoleModel } from '../../app/useConsole.ts';
 import { RunPanel } from '../run/RunPanel.tsx';
+import { Spinner } from '../../components/Spinner.tsx';
 
 const STATUS: Record<RunSummary[ 'status' ], { label: string; tone: Tone }> = {
 	running: { label: 'Running', tone: 'accent' },
@@ -34,6 +35,14 @@ export function HistoryPage( { model, onOpenFile }: { model: ConsoleModel; onOpe
 				<EmptyState icon={ <History size={ 28 } /> } title="Choose a version">
 					Enter a version in the sidebar to see its runs.
 				</EmptyState>
+			</div>
+		);
+	}
+
+	if ( ! state && ! model.error ) {
+		return (
+			<div className="page page-center">
+				<Spinner block label="Loading runs…" />
 			</div>
 		);
 	}

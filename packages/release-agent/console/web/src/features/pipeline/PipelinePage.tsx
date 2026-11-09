@@ -9,6 +9,7 @@ import type { ConsoleModel } from '../../app/useConsole.ts';
 import { RunPanel } from '../run/RunPanel.tsx';
 import { SequenceBanner } from './Sequence.tsx';
 import { StageRow, stageResult, type LiveState } from './StageRow.tsx';
+import { Spinner } from '../../components/Spinner.tsx';
 
 const EXPANDED_KEY = 'release-console:expanded-stage';
 
@@ -153,6 +154,14 @@ export function PipelinePage( {
 	const sequence = state?.sequence ?? null;
 	const sequenceActive = sequence?.status === 'running' || sequence?.status === 'paused';
 
+	if ( validVersion && ! state && ! model.error ) {
+		return (
+			<div className="page page-center">
+				<Spinner block label="Loading the stages…" />
+			</div>
+		);
+	}
+
 	if ( ! validVersion || ! state ) {
 		return (
 			<div className="page page-center">
@@ -236,7 +245,7 @@ export function PipelinePage( {
 		// The run's stream is still connecting.
 		detail = (
 			<div className="panel panel-fill">
-				<Loader2 size={ 20 } className="spin icon-muted" aria-label="Loading the run" />
+				<Spinner block label="Loading the run…" />
 			</div>
 		);
 	}

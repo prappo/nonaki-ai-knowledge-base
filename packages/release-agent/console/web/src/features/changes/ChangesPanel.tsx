@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type Change, type Changes, type Diff } from '../../lib/api.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 const KIND_LABELS: Record<Change[ 'kind' ], string> = {
 	modified: 'M',
@@ -139,7 +140,7 @@ export function ChangesPanel( { refreshKey, initialPath = null }: { refreshKey: 
 			<nav className="file-list" aria-label="Changed files">
 				<div className="file-list-head">
 					<span className="muted small-text">
-						{ changes ? `${ changes.changes.length } uncommitted change${ changes.changes.length === 1 ? '' : 's' }` : 'Loading…' }
+						{ changes ? `${ changes.changes.length } uncommitted change${ changes.changes.length === 1 ? '' : 's' }` : <Spinner label="Loading changes…" /> }
 					</span>
 					<button type="button" className="btn btn-sm" onClick={ () => void load() }>
 						Refresh
@@ -179,7 +180,7 @@ export function ChangesPanel( { refreshKey, initialPath = null }: { refreshKey: 
 						</header>
 						<div className="viewer-body">
 							{ diffError && <p className="error-text" role="alert">{ diffError }</p> }
-							{ diff && <DiffView diff={ diff } /> }
+							{ diff ? <DiffView diff={ diff } /> : ! diffError && <Spinner block label="Loading the diff…" /> }
 						</div>
 					</>
 				) : (

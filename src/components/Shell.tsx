@@ -21,6 +21,7 @@ const NAV = [
   { href: "/", label: "Ask", icon: "ask" },
   { href: "/docs", label: "Documents", icon: "docs" },
   { href: "/review", label: "Review queue", icon: "review" },
+  { href: "/tasks", label: "Tasks", icon: "tasks" },
   { href: "/projects", label: "Projects", icon: "projects" },
   { href: "/releases", label: "Releases", icon: "rocket" },
   { href: "/agent", label: "Agent", icon: "terminal" },

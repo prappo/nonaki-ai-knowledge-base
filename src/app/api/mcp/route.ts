@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { getShareConfig } from "@/lib/share";
+import { getShareConfig, type McpConfig } from "@/lib/share";
+import { agentFromRequest } from "@/lib/releases";
 import { handleMcpMessage, MCP_PROTOCOL_VERSION } from "@/lib/mcp";
 
 export const maxDuration = 300;
@@ -8,6 +9,10 @@ export const maxDuration = 300;
  * MCP endpoint (Streamable HTTP, stateless). AI clients connect here with
  * the API key from Share → MCP server as a Bearer token. The middleware
  * lets this route through — auth is the key check below.
+ *
+ * Paired release agents connect with their own agent token instead and get
+ * everything by default: every source, and read/write Projects and tasks —
+ * whether or not the public MCP share is switched on.
  */
 
 const JSON_HEADERS = {
@@ -20,15 +25,24 @@ function bearerToken(req: NextRequest): string {
   return header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
 }
 
+/** Full access for a paired agent's token, or null for anything else. */
+async function agentConfig(req: NextRequest, shared: McpConfig): Promise<McpConfig | null> {
+  if (!bearerToken(req).startsWith("nk_agent_")) return null;
+  const agent = await agentFromRequest(req);
+  return agent ? { ...shared, enabled: true, sourceIds: [], projectAccess: "write" } : null;
+}
+
 export async function POST(req: NextRequest) {
-  const config = await getShareConfig("mcp");
-  if (!config.enabled) {
+  const shared = await getShareConfig("mcp");
+  const fromAgent = await agentConfig(req, shared);
+  const config = fromAgent ?? shared;
+  if (!fromAgent && !config.enabled) {
     return Response.json(
       { error: "MCP server is disabled — enable it under Share → MCP server" },
       { status: 403 }
     );
   }
-  if (!config.apiKey || bearerToken(req) !== config.apiKey) {
+  if (!fromAgent && (!config.apiKey || bearerToken(req) !== config.apiKey)) {
     return Response.json(
       { error: "Unauthorized — pass the MCP API key as a Bearer token" },
       { status: 401, headers: { "WWW-Authenticate": "Bearer" } }

@@ -19,8 +19,8 @@ export type { SequenceSnapshot };
 export type { BuildArtifact, BuildRecord, BuildStep, ZipEntry, ZipFileContent } from '../../../server/builds/builds.ts';
 
 export type { Backup, ConsoleDataSummary, DiscardCandidate };
-export type { CiBuildRun } from '../../../server/release/ciBuilds.ts';
-import type { CiBuildRun } from '../../../server/release/ciBuilds.ts';
+export type { BetaSource, CiBuildRun } from '../../../server/release/ciBuilds.ts';
+import type { BetaSource, CiBuildRun } from '../../../server/release/ciBuilds.ts';
 
 export interface ResetPlan {
 	changes: DiscardCandidate[];
@@ -166,6 +166,9 @@ export const api = {
 	chats: () => request<{ runs: RunSummary[]; run: RunSnapshot | null; releaseRun: RunSnapshot | null }>( CHAT ),
 	startChat: ( prompt: string, permissions: 'ask' | 'risky', chrome: boolean ) =>
 		post<{ run: RunSnapshot }>( CHAT, { prompt, permissions, chrome } ),
+	/** Deletes a chat: the session and every session that resumed it. */
+	deleteChat: ( runId: string ) => post<{ deleted: string[] }>( `${ CHAT }/${ runId }/delete` ),
+	deleteAllChats: () => post<{ deleted: number }>( `${ CHAT }/delete-all` ),
 	files: ( version: string ) => request<{ files: FileEntry[] }>( `/api/files?${ query( { version } ) }` ),
 	file: ( path: string ) => request<{ file: TextFile }>( `/api/file?${ query( { path } ) }` ),
 	saveFile: ( path: string, content: string, hash: string ) =>
@@ -188,8 +191,8 @@ export const api = {
 	startBuild: ( lite: boolean ) => post<{ build: BuildRecord }>( '/api/builds', { lite } ),
 	buildLog: ( id: string, offset: number ) =>
 		request<{ text: string; offset: number; build: BuildRecord | null }>( `/api/builds/${ id }/log?${ query( { offset: String( offset ) } ) }` ),
-	ciBuilds: () => request<{ branch: string | null; runs: CiBuildRun[] | null }>( '/api/ci-builds' ),
-	startCiBuild: ( branch: string ) => post<{ branch: string }>( '/api/ci-builds', { branch } ),
+	ciBuilds: () => request<{ branch: string | null; branches?: string[]; runs: CiBuildRun[] | null }>( '/api/ci-builds' ),
+	startCiBuild: ( branch: string, beta = false ) => post<{ branch: string; beta: boolean; source: BetaSource | null }>( '/api/ci-builds', { branch, beta } ),
 	cancelBuild: ( id: string ) => post( `/api/builds/${ id }/cancel` ),
 	deleteBuild: ( id: string ) => post( `/api/builds/${ id }/delete` ),
 	zipFile: ( id: string, name: string, path: string ) =>

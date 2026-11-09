@@ -4,6 +4,7 @@ import { ZipFileView } from './ZipFileView.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { api, buildFileUrl, type ZipEntry } from '../../lib/api.ts';
 import { formatSize } from '../../lib/format.ts';
+import { Spinner } from '../../components/Spinner.tsx';
 
 interface TreeNode {
 	name: string;
@@ -184,6 +185,8 @@ export function ZipBrowser( { buildId, name, compact = false }: { buildId: strin
 						) ) }
 						{ matches.length > 500 && <li className="note">{ matches.length - 500 } more. Narrow the search.</li> }
 					</ul>
+				) : ! tree ? (
+					! error && <Spinner block label="Reading the zip…" />
 				) : (
 					tree && (
 						<ul className="tree">

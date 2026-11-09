@@ -24,6 +24,7 @@ import { api, rawUrl, type BuildRecord, type DocsListing, type FileEntry, type L
 import { displayName, groupReleaseFiles, type FileGroup, type FileGroupId } from '../../lib/fileGroups.ts';
 import { formatDateTime, formatSize } from '../../lib/format.ts';
 import { ZipBrowser } from '../builds/ZipBrowser.tsx';
+import { Spinner } from '../../components/Spinner.tsx';
 import { DocsList } from './DocsList.tsx';
 import { FileViewer } from './FileViewer.tsx';
 
@@ -230,6 +231,7 @@ export function LibraryPage( {
 					</button>
 				</div>
 				{ error && <p className="callout callout-danger">{ error }</p> }
+				{ ! versions && ! error && <Spinner block quiet label="Loading releases" /> }
 				<ul>
 					{ versions?.map( ( item ) => (
 						<li key={ item.version }>
@@ -295,7 +297,9 @@ export function LibraryPage( {
 							selected={ selection.file }
 							onSelect={ ( path ) => onSelect( { source: 'docs', file: path, build: null, zip: null } ) }
 						/>
-					) : null
+					) : (
+						! error && <Spinner block label="Loading user docs…" />
+					)
 				) : source === 'builds' ? (
 					<>
 						<header className="item-list-head">
@@ -358,12 +362,12 @@ export function LibraryPage( {
 							/>
 						) ) }
 					</>
+				) : versions ? (
+					<EmptyState icon={ <FolderOpen size={ 24 } /> } title="No release folders yet">
+						Release content appears here once Analyze has run.
+					</EmptyState>
 				) : (
-					versions && (
-						<EmptyState icon={ <FolderOpen size={ 24 } /> } title="No release folders yet">
-							Release content appears here once Analyze has run.
-						</EmptyState>
-					)
+					! error && <Spinner block label="Loading the library…" />
 				) }
 			</section>
 

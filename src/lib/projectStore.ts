@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { audit } from "./audit";
+import { isEmail, listUsers } from "./users";
 import {
   cleanText,
   isProjectStatus,
@@ -8,6 +9,7 @@ import {
   parseDate,
   type TaskStatus,
 } from "./projects";
+import type { Prisma } from "@/generated/prisma/client";
 
 /**
  * Server-side project planning operations, shared by the REST API (the
@@ -38,7 +40,12 @@ function startOfTodayUtc(): number {
 const touch = (projectId: string) =>
   prisma.project.update({ where: { id: projectId }, data: { updatedAt: new Date() } });
 
-async function nextPosition(projectId: string, status: string): Promise<number> {
+/** Bump the project's updatedAt, when the task has one. */
+const touchAll = (...projectIds: (string | null)[]) =>
+  [...new Set(projectIds.filter((p): p is string => Boolean(p)))].map(touch);
+
+/** Standalone tasks (projectId null) keep their own column order. */
+async function nextPosition(projectId: string | null, status: string): Promise<number> {
   const last = await prisma.projectTask.aggregate({
     where: { projectId, status },
     _max: { position: true },
@@ -192,14 +199,45 @@ export function parseNewTask(input: TaskInput) {
     status: (isTaskStatus(input.status) ? input.status : "todo") as TaskStatus,
     priority: isTaskPriority(input.priority) ? input.priority : "medium",
     dueDate: dateField(input.dueDate, "task due date") ?? null,
+    assignee: assigneeField(input.assignee) ?? null,
   };
 }
 
-/** Append tasks to the end of their columns. All-or-nothing. */
-export async function addTasks(projectId: string, inputs: TaskInput[]) {
+/** undefined → leave unchanged, null/"" → unassign, email → that user (lowercased). */
+function assigneeField(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  if (!isEmail(v)) throw new ProjectError("Invalid assignee — use the user's email");
+  return v.toLowerCase();
+}
+
+/** Refuse emails that aren't app users (skipped when the user list can't be read). */
+async function requireKnownUsers(emails: (string | null | undefined)[]) {
+  const wanted = [...new Set(emails.filter((e): e is string => Boolean(e)))];
+  if (wanted.length === 0) return;
+  const users = await listUsers();
+  if (users.length === 0) return;
+  const known = new Set(users.map((u) => u.email));
+  const missing = wanted.filter((e) => !known.has(e));
+  if (missing.length) throw new ProjectError(`No user with the email ${missing.join(", ")}`);
+}
+
+/** undefined → leave unchanged, null/"" → no project, id → that project (must exist). */
+async function projectField(v: unknown): Promise<string | null | undefined> {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  if (typeof v !== "string") throw new ProjectError("Invalid projectId");
+  const project = await prisma.project.findUnique({ where: { id: v }, select: { id: true } });
+  if (!project) throw notFound("Project");
+  return project.id;
+}
+
+/** Append tasks to the end of their project's columns. All-or-nothing. */
+export async function addTasks(projectId: string, inputs: TaskInput[], actor?: string) {
   if (inputs.length === 0) throw new ProjectError("At least one task is required");
   if (inputs.length > 100) throw new ProjectError("Max 100 tasks per request");
   const parsed = inputs.map(parseNewTask);
+  await requireKnownUsers(parsed.map((t) => t.assignee));
 
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
   if (!project) throw notFound("Project");
@@ -215,6 +253,7 @@ export async function addTasks(projectId: string, inputs: TaskInput[]) {
         data: {
           ...t,
           projectId,
+          createdBy: actor ?? null,
           position: positions[t.status]++,
           completedAt: t.status === "done" ? now : null,
         },
@@ -230,7 +269,12 @@ export async function addTasks(projectId: string, inputs: TaskInput[]) {
  * (the REST route does; MCP addresses tasks by id alone).
  * Moving to another column appends it to the end of that column.
  */
-export async function updateTask(taskId: string, input: TaskInput, projectId?: string) {
+export async function updateTask(
+  taskId: string,
+  input: TaskInput,
+  projectId?: string,
+  actor?: string
+) {
   const task = await prisma.projectTask.findFirst({
     where: { id: taskId, ...(projectId ? { projectId } : {}) },
   });
@@ -244,6 +288,8 @@ export async function updateTask(taskId: string, input: TaskInput, projectId?: s
     dueDate?: Date | null;
     position?: number;
     completedAt?: Date | null;
+    assignee?: string | null;
+    projectId?: string | null;
   } = {};
 
   if (input.title !== undefined) {
@@ -261,22 +307,177 @@ export async function updateTask(taskId: string, input: TaskInput, projectId?: s
   const dueDate = dateField(input.dueDate, "due date");
   if (dueDate !== undefined) data.dueDate = dueDate;
 
+  const assignee = assigneeField(input.assignee);
+  if (assignee !== undefined && assignee !== task.assignee) {
+    await requireKnownUsers([assignee]);
+    data.assignee = assignee;
+  }
+
+  const targetProject = await projectField(input.projectId);
+  if (targetProject !== undefined && targetProject !== task.projectId) {
+    data.projectId = targetProject;
+  }
+
   if (input.status !== undefined) {
     if (!isTaskStatus(input.status)) {
       throw new ProjectError("Invalid task status — use todo, doing or done");
     }
     if (input.status !== task.status) {
       data.status = input.status;
-      data.position = await nextPosition(task.projectId, input.status);
       data.completedAt = input.status === "done" ? new Date() : null;
     }
   }
+  // a new column or a new project puts the task at the end of its column
+  if (data.status !== undefined || data.projectId !== undefined) {
+    data.position = await nextPosition(
+      data.projectId !== undefined ? data.projectId : task.projectId,
+      data.status ?? task.status
+    );
+  }
 
   const [updated] = await prisma.$transaction([
-    prisma.projectTask.update({ where: { id: taskId }, data }),
-    touch(task.projectId),
+    prisma.projectTask.update({ where: { id: taskId }, data, include: TASK_INCLUDE }),
+    ...touchAll(task.projectId, data.projectId ?? null),
   ]);
+
+  if (data.assignee !== undefined) {
+    await audit(
+      "task.assigned",
+      data.assignee
+        ? `Task "${updated.title}" assigned to ${data.assignee}`
+        : `Task "${updated.title}" unassigned`,
+      {
+        entityType: "task",
+        entityId: taskId,
+        actor,
+        detail: { assignee: { from: task.assignee, to: data.assignee } },
+      }
+    );
+  }
   return updated;
+}
+
+const TASK_INCLUDE = { project: { select: { id: true, name: true, status: true } } } as const;
+
+/** Create one task from the Tasks page: optionally on a project, optionally assigned. */
+export async function createTask(input: TaskInput, actor?: string) {
+  const parsed = parseNewTask(input);
+  const projectId = (await projectField(input.projectId)) ?? null;
+  await requireKnownUsers([parsed.assignee]);
+
+  const [task] = await prisma.$transaction([
+    prisma.projectTask.create({
+      data: {
+        ...parsed,
+        projectId,
+        createdBy: actor ?? null,
+        position: await nextPosition(projectId, parsed.status),
+        completedAt: parsed.status === "done" ? new Date() : null,
+      },
+      include: TASK_INCLUDE,
+    }),
+    ...touchAll(projectId),
+  ]);
+  return task;
+}
+
+export type TaskFilters = {
+  /** "me", "unassigned", an email, or empty for everyone */
+  assignee?: string | null;
+  /** "open" (to do + in progress, the default), a status, or "all" */
+  status?: string | null;
+  /** a project id, "none" for standalone tasks, or empty for any */
+  project?: string | null;
+  priority?: string | null;
+  /** "overdue", "today", "week" (next 7 days) or "none" (no due date) */
+  due?: string | null;
+  q?: string | null;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function taskWhere(f: TaskFilters, me: string | null): Prisma.ProjectTaskWhereInput {
+  const where: Prisma.ProjectTaskWhereInput = {};
+  const and: Prisma.ProjectTaskWhereInput[] = [];
+
+  if (f.assignee === "me") where.assignee = me ?? "__nobody__";
+  else if (f.assignee === "unassigned") where.assignee = null;
+  else if (f.assignee) where.assignee = f.assignee.toLowerCase();
+
+  const status = f.status || "open";
+  if (status === "open") where.status = { in: ["todo", "doing"] };
+  else if (isTaskStatus(status)) where.status = status;
+
+  if (f.project === "none") where.projectId = null;
+  else if (f.project) where.projectId = f.project;
+
+  if (isTaskPriority(f.priority)) where.priority = f.priority;
+
+  const today = startOfTodayUtc();
+  if (f.due === "overdue") {
+    and.push({ dueDate: { lt: new Date(today) } }, { status: { not: "done" } });
+  } else if (f.due === "today") {
+    where.dueDate = { gte: new Date(today), lt: new Date(today + DAY_MS) };
+  } else if (f.due === "week") {
+    where.dueDate = { gte: new Date(today), lt: new Date(today + 7 * DAY_MS) };
+  } else if (f.due === "none") {
+    where.dueDate = null;
+  }
+
+  const q = f.q?.trim();
+  if (q) {
+    and.push({
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { notes: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+  if (and.length) where.AND = and;
+  return where;
+}
+
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+/**
+ * Tasks across every project (and standalone ones) for the Tasks page:
+ * soonest due first, undated last, high priority first within a day.
+ * Done tasks list the most recently finished first.
+ */
+export async function listTasks(filters: TaskFilters, me: string | null, limit = 500) {
+  const tasks = await prisma.projectTask.findMany({
+    where: taskWhere(filters, me),
+    include: TASK_INCLUDE,
+    orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+    take: limit + 1,
+  });
+  const truncated = tasks.length > limit;
+  const shown = tasks.slice(0, limit);
+
+  shown.sort((a, b) => {
+    if (a.status === "done" && b.status === "done") {
+      return (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0);
+    }
+    const da = a.dueDate?.getTime() ?? Infinity;
+    const db = b.dueDate?.getTime() ?? Infinity;
+    if (da !== db) return da - db;
+    return (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1);
+  });
+  return { tasks: shown, truncated };
+}
+
+/** Open-task counts for the Tasks page tabs. */
+export async function taskCounts(me: string | null) {
+  const open = { status: { in: ["todo", "doing"] } };
+  const [mine, all, unassigned, overdue] = await Promise.all([
+    me ? prisma.projectTask.count({ where: { ...open, assignee: me } }) : Promise.resolve(0),
+    prisma.projectTask.count({ where: open }),
+    prisma.projectTask.count({ where: { ...open, assignee: null } }),
+    prisma.projectTask.count({
+      where: { ...open, dueDate: { lt: new Date(startOfTodayUtc()) } },
+    }),
+  ]);
+  return { mine, all, unassigned, overdue };
 }
 
 export async function deleteTask(taskId: string, projectId?: string) {

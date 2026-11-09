@@ -226,3 +226,100 @@ export function notificationsDraft(api) {
     },
   };
 }
+
+// ── docs PR on the marketing site ───────────────────────────────────────
+
+export const DOCS_SITE_REPO = "awesomemotive/wp-simple-pay-site";
+
+/** The branch `/wpsp-docs-site-pr` pushes the docs sync to. */
+export function docsSiteBranch(version) {
+  return `docs/sync-${version}-user-docs`;
+}
+
+/** Probe: the newest PR from this version's sync branch, `{ exists: false }`, or null when gh couldn't answer. */
+export async function docsSitePrProbe(api) {
+  const result = await api.run("gh", [
+    "pr", "list", "--repo", DOCS_SITE_REPO, "--head", docsSiteBranch(api.vars.version),
+    "--state", "all", "--limit", "1", "--json", "number,state,url",
+  ]);
+  if (!result.ok) return null;
+  try {
+    const [pr] = JSON.parse(result.stdout);
+    return pr ? { exists: true, number: pr.number, state: String(pr.state).toLowerCase(), url: pr.url } : { exists: false };
+  } catch {
+    return null;
+  }
+}
+
+const VERSION_TAG = /^\d+\.\d+\.\d+(\.\d+)?$/;
+const versionParts = (v) => v.split(".").map(Number);
+
+function compareVersions(a, b) {
+  const [x, y] = [versionParts(a), versionParts(b)];
+  for (let i = 0; i < 4; i++) {
+    const difference = (x[i] ?? 0) - (y[i] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+/** The newest plain version tag older than `version`, as the Library's docs diff picks it. */
+export function previousReleaseTag(tags, version) {
+  return (
+    tags
+      .map((tag) => tag.trim())
+      .filter((tag) => VERSION_TAG.test(tag) && compareVersions(tag, version) < 0)
+      .sort((a, b) => compareVersions(b, a))[0] ?? null
+  );
+}
+
+/**
+ * Why the docs PR can't run yet: Update customer docs has not changed
+ * docs-user/ for this release. "Changed" is what the Library marks: any
+ * difference from the previous release tag, committed, uncommitted or
+ * untracked. Null when it has changed, or when git can't tell (no repo, no
+ * earlier tag), so a check that can't answer never blocks.
+ */
+export function docsNotUpdatedReason(api) {
+  const docs = "docs-user";
+  const tags = api.runSync("git", ["tag", "--list"]);
+  if (!tags.ok) return null;
+  const base = previousReleaseTag(tags.stdout.split("\n"), api.vars.version);
+  if (!base) return null;
+
+  // Exit 0: matches the tag. Exit 1 (it differs) or git failing: don't block.
+  if (api.runSync("git", ["diff", "--quiet", base, "--", docs]).status !== 0) return null;
+
+  const untracked = api.runSync("git", ["ls-files", "--others", "--exclude-standard", "--", docs]);
+  if (!untracked.ok || untracked.stdout.trim() !== "") return null;
+
+  return `Run Update customer docs first. ${docs}/ has not changed since ${base}, so there is nothing new to sync.`;
+}
+
+/**
+ * Open docs PR on marketing site: blocked until the docs were updated for
+ * this release, done once a sync PR for this version is open or merged.
+ */
+export function docsSitePr(api) {
+  // The recipe's own block (no analysis yet) comes first, as for the docs stage.
+  const blockedReason = api.declared.blockedReason ?? docsNotUpdatedReason(api);
+  const pr = api.probes.docsSitePr;
+  if (!pr) return { done: null, blockedReason, remote: null };
+  if (!pr.exists) return { done: false, blockedReason, remote: null };
+
+  const closed = pr.state === "closed";
+  return {
+    done: !closed,
+    blockedReason,
+    remote: {
+      tone: closed ? "warning" : "success",
+      text: closed
+        ? `Docs PR #${pr.number} on the marketing site was closed without merging.`
+        : `Docs PR #${pr.number} on the marketing site is ${pr.state}.`,
+      url: pr.url,
+      rerunWarning: closed
+        ? `PR #${pr.number} was closed, but its branch may still exist. Running this again stops at the existing branch until it is deleted on GitHub.`
+        : `PR #${pr.number} already syncs ${api.vars.version}'s docs. Running this again stops at the existing branch instead of opening a second PR.`,
+    },
+  };
+}

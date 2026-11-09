@@ -245,6 +245,29 @@
       }
     },
     {
+      "id": "docs-site-pr",
+      "group": "prepare",
+      "title": "Open docs PR on marketing site",
+      "prompt": "/wpsp-docs-site-pr {version}",
+      "summary": "After Update customer docs: clones the marketing site repo into a temporary folder, copies docs-user/ into plugins/wpsp-docs/docs-user/ while keeping the site’s published slugs, opens the sync PR and removes the temporary folder.",
+      "gates": [
+        "Approve any deleted articles or broken URLs",
+        "Confirm the PR before it is pushed and opened"
+      ],
+      "requires": [
+        "gh"
+      ],
+      "blockedUntil": [
+        {
+          "check": {
+            "fileExists": "{analysisFile}"
+          },
+          "reason": "Run Draft changelog & analysis first. {analysisFile} does not exist yet."
+        }
+      ],
+      "status": "wpsp-pro.hooks.mjs#docsSitePr"
+    },
+    {
       "id": "marketing",
       "group": "prepare",
       "title": "Write marketing content",
@@ -511,6 +534,10 @@
     "notificationFeeds": {
       "type": "script",
       "hook": "wpsp-pro.hooks.mjs#notificationFeeds"
+    },
+    "docsSitePr": {
+      "type": "script",
+      "hook": "wpsp-pro.hooks.mjs#docsSitePrProbe"
     }
   },
   "checks": [
@@ -560,6 +587,7 @@
         "review-milestone",
         "compare-builds",
         "analyze",
+        "docs-site-pr",
         "create-release",
         "lite-sync",
         "lite-publish",

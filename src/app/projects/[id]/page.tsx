@@ -7,6 +7,7 @@ import { TopStrip } from "@/components/Shell";
 import { Icon } from "@/components/Icons";
 import { TextSkeleton } from "@/components/Skeleton";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { AssigneePicker, useUsers } from "@/components/TaskBits";
 import {
   PRIORITY_STYLE,
   PROJECT_STATUSES,
@@ -30,6 +31,7 @@ type Task = {
   priority: TaskPriority;
   dueDate: string | null;
   position: number;
+  assignee: string | null;
 };
 
 type LinkedDoc = {
@@ -375,6 +377,7 @@ function TaskCard({
   const isDone = task.status === "done";
   const late = isOverdue(task.dueDate, isDone);
   const idx = TASK_STATUSES.indexOf(task.status);
+  const { users, me } = useUsers();
 
   return (
     <div className={`rounded-lg border bg-card ${open ? "border-teal" : "border-line"}`}>
@@ -417,6 +420,14 @@ function TaskCard({
             )}
           </div>
         </button>
+        <AssigneePicker
+          value={task.assignee}
+          users={users}
+          me={me}
+          compact
+          align="right"
+          onChange={(assignee) => onUpdate({ assignee })}
+        />
       </div>
 
       {open && (

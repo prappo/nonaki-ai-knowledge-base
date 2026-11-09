@@ -10,6 +10,9 @@
  *   RELEASE_RECIPE   its recipe file
  *   RELEASE_STATE    where run history, builds and the cache live
  *   RELEASE_AGENT_FAKE=1   scripted runs: no Claude calls, no repo changes
+ *   RELEASE_SERVER, RELEASE_AGENT_TOKEN   the control server and this agent's
+ *                    token, for its MCP server (never passed on to sessions)
+ *   RELEASE_CHROME=0 the laptop has no browser: leave Claude in Chrome out
  */
 
 import http from 'node:http';
@@ -21,8 +24,8 @@ import { createApp } from './http/app.ts';
 import { CONFIG_FILE, sessionEnv } from './release/config.ts';
 import { recipe, ROOT as root } from './release/recipe.ts';
 import { CiBuilds } from './release/ciBuilds.ts';
-import { findStage } from './release/stages.ts';
 import { fakeQuery } from './runs/fake-query.ts';
+import { mcpAccessFromEnv, sessionMcpOptions, sessionProcessEnv } from './runs/mcpAccess.ts';
 import { RunManager, setRiskAssessor, type QueryFn } from './runs/runner.ts';
 import { Sequencer } from './runs/sequence.ts';
 import { FileRunStore } from './runs/store.ts';
@@ -39,10 +42,12 @@ const queryFn: QueryFn = fake ? fakeQuery : ( params ) => query( params );
 // Fake runs are kept apart so they never show up in the real run history.
 const runsDir = path.join( stateRoot, '.state', fake ? 'fake-runs' : 'runs' );
 const store = new FileRunStore( runsDir );
-// Browser stages get Claude in Chrome; every session gets the settings' env vars.
-const sessionOptions = ( stageId: string ): Partial<Options> => ( {
-	env: { ...( process.env as Record<string, string> ), ...sessionEnv( root ) },
-	...( findStage( stageId )?.browser ? { extraArgs: { chrome: null } } : {} ),
+// Every session gets all the MCP servers (Claude Code's own, the repo's
+// .mcp.json, Claude in Chrome and the control server's) and the settings' env vars.
+const mcpAccess = mcpAccessFromEnv( process.env );
+const sessionOptions = (): Partial<Options> => ( {
+	env: { ...sessionProcessEnv( process.env ), ...sessionEnv( root ) },
+	...sessionMcpOptions( mcpAccess ),
 } );
 const manager = new RunManager( root, queryFn, sessionOptions, store );
 const sequencer = new Sequencer( { manager, contextFor: ( version ) => ( { root, version } ) } );
@@ -52,10 +57,10 @@ const sequencer = new Sequencer( { manager, contextFor: ( version ) => ( { root,
 const chats = new RunManager(
 	root,
 	queryFn,
-	// a session started with "Use Chrome" (like `claude --chrome`) is stage "chat-chrome"
+	// Chrome is on by default ("chat-chrome"); a session started with it switched off is "chat"
 	( stageId ) => ( {
-		env: { ...( process.env as Record<string, string> ), ...sessionEnv( root ) },
-		...( stageId === 'chat-chrome' ? { extraArgs: { chrome: null } } : {} ),
+		env: { ...sessionProcessEnv( process.env ), ...sessionEnv( root ) },
+		...sessionMcpOptions( mcpAccess, { chrome: mcpAccess.chrome && stageId === 'chat-chrome' } ),
 	} ),
 	new FileRunStore( path.join( stateRoot, '.state', fake ? 'fake-chats' : 'chats' ) )
 );
