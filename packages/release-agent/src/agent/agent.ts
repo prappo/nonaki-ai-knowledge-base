@@ -18,7 +18,7 @@ import { openRecipe, type OpenedRecipe } from "../recipe/load.ts";
 import { defaultLocalDataDir } from "../health/health.ts";
 import { agentHome, type AgentConfig, type RepoConfig } from "./config.ts";
 
-export const AGENT_VERSION = "0.3.0";
+export const AGENT_VERSION = "0.4.0";
 
 interface RpcRequest {
   id: string;

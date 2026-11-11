@@ -1,7 +1,7 @@
 {
   "name": "release-agent",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Laptop-side release agent: runs a repo's release recipe and reports to a Nonaki control server.",
   "engines": {
