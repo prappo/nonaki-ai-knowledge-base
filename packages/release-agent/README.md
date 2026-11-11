@@ -21,6 +21,58 @@ npm run typecheck
 node src/cli/check-recipe.ts recipes/wpsp-pro.recipe.json --repo <checkout> --version 4.17.6 [--offline]
 ```
 
+## Serving the Release Console web app (gateway mode)
+
+Besides Nonaki (`pair` + `start`), the agent can serve the **Release Console
+web app** directly. The browser calls this machine through a Cloudflare
+Tunnel, so run output and agent sessions stream live.
+
+```bash
+release-agent allow ~/Projects "~/Local Sites"   # folders the web app may add projects from
+release-agent tunnel setup --hostname agent.example.com
+release-agent link https://release.example.com --code ABCD-2345
+release-agent autostart on                       # gateway (127.0.0.1:7420) + tunnel, now and at login
+release-agent tunnel status                      # is https://agent.example.com reaching the gateway?
+```
+
+- **`tunnel setup`** uses your own `cloudflared`: it signs in to Cloudflare the
+  first time (a browser window), creates a tunnel named
+  `release-agent-<machine>` (or reuses it), points the hostname at it (it won't
+  replace an existing DNS record unless you pass `--overwrite-dns`), and writes
+  `~/.release-agent/cloudflared.yml`, which sends only that hostname to
+  127.0.0.1:7420 and answers 404 to anything else. Nothing listens on a public
+  port. `tunnel run` runs it in the foreground; `tunnel remove [--delete]`
+  takes it down.
+- **`autostart on`** installs a launchd agent (macOS) or systemd user service
+  (Linux) for the gateway and the tunnel, with your shell's PATH so git, gh and
+  Claude are found. They start at login and restart if they stop. Logs are in
+  `~/.release-agent/logs/`. `autostart off` removes them. (Windows: run them
+  yourself for now.)
+- Quick tunnels (trycloudflare.com) aren't used: they don't carry the live
+  event streams.
+
+- **Every request needs the web app's token**: an Ed25519-signed JWT, 5
+  minutes long, for this machine and its owner. The gateway keeps only the
+  app's public key (saved by `link`), so it can check tokens but never make
+  them. Tokens for another machine, another user, another app, expired or
+  forged ones are refused (`src/gateway/token.ts`).
+- **Only the app's origin gets CORS**, and only loopback and the tunnel's
+  hostname are accepted as Host, which keeps DNS rebinding out.
+- **Repeated bad tokens** from one client get a 429 after 30 a minute.
+- **Heartbeat:** `serve` checks in every minute. When the web app revokes the
+  machine, the next check-in turns every request away until it's linked again.
+- **Routes:** `GET /health` (no token), `GET /projects`, and
+  `/projects/<id>/api/...`, which streams to that repo's console (event
+  streams included). For Add project: `GET /discover` (git repos in the allowed
+  folders, never through symlinks), `GET /recipes`, `POST /check`,
+  `POST /projects`, `POST /projects/<id>/remove`. Every folder is resolved to
+  its real path and must sit inside an allowed folder.
+- **Live status:** `GET /events` is an event stream of every project's branch,
+  changes, live run and agent session, and latest CI build: a snapshot, then
+  only changes (`src/gateway/live.ts`). It reads each console's cheap
+  `GET /api/live` and watches each repo's `.git`, only while someone watches. EventSource can't send headers, so `?access_token=` works
+  too; the gateway strips it before the console sees the request.
+
 ## Recipe at a glance
 
 | Key | What it holds |

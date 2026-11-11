@@ -340,6 +340,30 @@ export function libraryVersions( root: string ): { version: string; files: Retur
 		.map( ( version ) => ( { version, files: listReleaseFiles( root, library.isRelease( version )! ) } ) );
 }
 
+/** The live run of a manager, summarized: what it is, how it's going, and whether it needs someone. */
+export function liveRun( manager: RunManager ) {
+	const run = manager.latest;
+
+	if ( ! run ) {
+		return null;
+	}
+
+	const snap = run.snapshot();
+
+	return {
+		id: snap.id,
+		stageId: snap.stageId,
+		title: recipe.stages.find( ( s ) => s.id === snap.stageId )?.title ?? null,
+		version: snap.version,
+		prompt: snap.prompt.slice( 0, 120 ),
+		status: snap.status,
+		active: [ 'running', 'waiting', 'awaiting_reply' ].includes( snap.status ),
+		needsYou: snap.gates.length > 0 || snap.status === 'awaiting_reply',
+		startedAt: snap.startedAt,
+		endedAt: snap.endedAt,
+	};
+}
+
 export function createApp( options: AppOptions ): http.RequestListener {
 	const { root, manager } = options;
 	const currentBranch = options.currentBranch ?? gitBranch;
@@ -609,6 +633,13 @@ export function createApp( options: AppOptions ): http.RequestListener {
 		}
 
 		const resource = parts[ 1 ];
+
+		// GET /api/live — small and cheap, for live status elsewhere (the web app's project list):
+		// the branch, and the live release run and agent session, without their transcripts.
+		if ( method === 'GET' && parts.length === 2 && resource === 'live' ) {
+			sendJson( res, 200, { branch: await currentBranch( root ), run: liveRun( manager ), chat: options.chats ? liveRun( options.chats ) : null } );
+			return;
+		}
 
 		// GET /api/state?version=4.17.5
 		if ( method === 'GET' && parts.length === 2 && resource === 'state' ) {

@@ -3,6 +3,7 @@ import type { ConfigIssue, ReleaseConfig } from '../../../server/release/config.
 import type { FileEntry, TextFile } from '../../../server/repo/files.ts';
 import type { Backup, ConsoleDataSummary, DiscardCandidate } from '../../../server/repo/reset.ts';
 import type { HealthCheck } from '../../../server/release/health.ts';
+import { OFFLINE_MESSAGE, REMOTE, remoteApiBase, remoteGrant, remoteUrlBase } from './remote.ts';
 import type { Changes, Diff } from '../../../server/repo/git.ts';
 import type { RunSnapshot, RunSummary } from '../../../server/runs/runner.ts';
 import type { SequenceSnapshot } from '../../../server/runs/sequence.ts';
@@ -96,7 +97,8 @@ export class ApiError extends Error {
 
 /**
  * Where the console's API lives. Standalone it's this origin; embedded in the
- * Nonaki Releases page it's the tunnel to the agent, given as ?api=<path>.
+ * Nonaki Releases page it's the tunnel to the agent, given as ?api=<path>; in
+ * the Release Console web app it's the machine's gateway (see remote.ts).
  */
 export const API_BASE = ( () => {
 	const base = new URLSearchParams( window.location.search ).get( 'api' ) ?? '';
@@ -105,11 +107,21 @@ export const API_BASE = ( () => {
 	return /^\/[\w\-./%]*$/.test( base ) ? base.replace( /\/$/, '' ) : '';
 } )();
 
-/** An API path (starting with /api) on API_BASE. */
-export const apiUrl = ( path: string ) => `${ API_BASE }${ path }`;
+/** An API path (starting with /api), for fetch. */
+export const apiUrl = ( path: string ) => `${ REMOTE ? remoteApiBase() : API_BASE }${ path }`;
+
+/** An API path for what can't send headers: event streams, links, downloads, images. */
+export const linkUrl = ( path: string ) => `${ REMOTE ? remoteUrlBase() : API_BASE }${ path }`;
 
 async function request<T>( url: string, init?: RequestInit ): Promise<T> {
-	const response = await fetch( apiUrl( url ), init );
+	let response = await send( url, init );
+
+	// The token ran out under a long-open page: once more with a new one.
+	if ( REMOTE && response.status === 401 ) {
+		await remoteGrant( true );
+		response = await send( url, init );
+	}
+
 	const body = await response.json().catch( () => ( {} ) );
 
 	if ( ! response.ok ) {
@@ -117,6 +129,21 @@ async function request<T>( url: string, init?: RequestInit ): Promise<T> {
 	}
 
 	return body as T;
+}
+
+async function send( url: string, init?: RequestInit ): Promise<Response> {
+	if ( ! REMOTE ) {
+		return fetch( apiUrl( url ), init );
+	}
+
+	const { token } = await remoteGrant();
+
+	try {
+		return await fetch( apiUrl( url ), { ...init, headers: { ...( init?.headers as Record<string, string> ), Authorization: `Bearer ${ token }` } } );
+	} catch {
+		// The machine went away (asleep, agent stopped, tunnel down).
+		throw new ApiError( 0, OFFLINE_MESSAGE );
+	}
 }
 
 function post<T>( url: string, body: unknown = {} ): Promise<T> {
@@ -132,16 +159,16 @@ const query = ( params: Record<string, string> ) => new URLSearchParams( params 
 /** URL that serves a repo file as-is, keeping its folder so relative links resolve. */
 /** A file inside a build's zip, served as-is (for images and single-file downloads). */
 export function zipFileUrl( id: string, name: string, path: string, download = false ): string {
-	return `${ API_BASE }/api/builds/${ id }/files/${ encodeURIComponent( name ) }/raw?${ new URLSearchParams( { path, ...( download ? { download: '1' } : {} ) } ) }`;
+	return linkUrl( `/api/builds/${ id }/files/${ encodeURIComponent( name ) }/raw?${ new URLSearchParams( { path, ...( download ? { download: '1' } : {} ) } ) }` );
 }
 
 /** Download link for a build's zip. */
 export function buildFileUrl( id: string, name: string ): string {
-	return `${ API_BASE }/api/builds/${ id }/files/${ encodeURIComponent( name ) }`;
+	return linkUrl( `/api/builds/${ id }/files/${ encodeURIComponent( name ) }` );
 }
 
 export function rawUrl( path: string ): string {
-	return `${ API_BASE }/api/raw/${ path.split( '/' ).map( encodeURIComponent ).join( '/' ) }`;
+	return linkUrl( `/api/raw/${ path.split( '/' ).map( encodeURIComponent ).join( '/' ) }` );
 }
 
 /** Release runs; Agent sessions use CHAT with the same per-run routes. */

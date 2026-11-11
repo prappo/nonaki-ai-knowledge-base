@@ -18,15 +18,49 @@ export interface RepoConfig {
   recipe: string;
 }
 
+/**
+ * The link to the Release Console web app (`release-agent link`): who this
+ * machine belongs to, and the app's public key, which is all the gateway
+ * needs to check the browser's tokens.
+ */
+export interface WebLink {
+  /** The web app's origin. */
+  app: string;
+  machineId: string;
+  machineName: string;
+  ownerId: string;
+  ownerEmail: string;
+  /** The app's Ed25519 public key (PEM). */
+  publicKey: string;
+  /** For heartbeats to the app. Never sent anywhere else. */
+  secret: string;
+  /** Where the Cloudflare Tunnel publishes the gateway, e.g. https://agent.example.com */
+  tunnelUrl?: string;
+  /** The gateway's local port. */
+  port: number;
+  /** The app said this machine was revoked: every token is refused until it's linked again. */
+  revoked?: boolean;
+}
+
 export interface AgentConfig {
-  server: string;
-  agentId: string;
-  token: string;
+  /** The Nonaki server, once paired with `release-agent pair` (the older mode). */
+  server?: string;
+  agentId?: string;
+  token?: string;
   name: string;
   repos: RepoConfig[];
   /** Capabilities to advertise on top of the detected ones (e.g. "browser"). */
   capabilities: string[];
+  /** The Release Console web app, once linked with `release-agent link`. */
+  web?: WebLink;
+  /** Folders the web app may add projects from (`release-agent allow`). */
+  allowedRoots?: string[];
+  /** The Cloudflare Tunnel publishing the gateway (`release-agent tunnel setup`). */
+  tunnel?: { name: string; id: string; hostname: string; configFile: string };
 }
+
+/** The gateway's default local port. */
+export const DEFAULT_GATEWAY_PORT = 7420;
 
 export const agentHome = () => process.env.RELEASE_AGENT_HOME ?? path.join(homedir(), ".release-agent");
 const configFile = () => path.join(agentHome(), "config.json");

@@ -3301,3 +3301,15 @@ button.list-row:hover,
 .visual-diff-block.is-removed .visual-diff-tag {
 	color: var(--red-text);
 }
+
+/* Remote mode: the machine couldn't be reached before the console started. */
+.remote-error {
+	margin: 48px auto;
+	max-width: 520px;
+	padding: 14px 16px;
+	border: 1px solid var(--line, #e3e6ea);
+	border-radius: 10px;
+	font: 13px/1.5 system-ui, sans-serif;
+	color: var(--danger, #c2352b);
+	background: var(--surface, #fff);
+}

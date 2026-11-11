@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { api, type ConsoleState, type HealthCheck, type RunSnapshot, type StageState, apiUrl } from '../lib/api.ts';
+import { api, type ConsoleState, type HealthCheck, type RunSnapshot, type StageState, linkUrl } from '../lib/api.ts';
 import { applyRunEvent, isActive, type StreamEvent } from '../lib/runState.ts';
 
 const VERSION_KEY = 'release-console:version';
@@ -33,6 +33,8 @@ function saveVersion( version: string ): void {
  */
 export function useRunStream( runId: string | null, base = '/api/runs' ): RunSnapshot | null {
 	const [ run, setRun ] = useState<RunSnapshot | null>( null );
+	// Bumped to reopen a stream the browser gave up on (e.g. its URL token ran out).
+	const [ attempt, setAttempt ] = useState( 0 );
 
 	useEffect( () => {
 		setRun( null );
@@ -41,7 +43,8 @@ export function useRunStream( runId: string | null, base = '/api/runs' ): RunSna
 			return;
 		}
 
-		const source = new EventSource( apiUrl( `${ base }/${ runId }/events` ) );
+		const source = new EventSource( linkUrl( `${ base }/${ runId }/events` ) );
+		let retry: ReturnType<typeof setTimeout> | undefined;
 
 		source.onmessage = ( message ) => {
 			try {
@@ -52,8 +55,18 @@ export function useRunStream( runId: string | null, base = '/api/runs' ): RunSna
 			}
 		};
 
-		return () => source.close();
-	}, [ runId, base ] );
+		// The browser reconnects by itself, except after an error status: then open a new one.
+		source.onerror = () => {
+			if ( source.readyState === EventSource.CLOSED ) {
+				retry = setTimeout( () => setAttempt( ( n ) => n + 1 ), 3000 );
+			}
+		};
+
+		return () => {
+			clearTimeout( retry );
+			source.close();
+		};
+	}, [ runId, base, attempt ] );
 
 	return run;
 }

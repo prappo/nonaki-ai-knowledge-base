@@ -42,6 +42,8 @@ interface Console {
   child: ChildProcess | null;
   port: number | null;
   restarts: number;
+  /** Taken off this machine: don't restart it when it exits. */
+  removed?: boolean;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -96,6 +98,25 @@ export class Agent {
     this.capabilities = detectCapabilities(this.config.capabilities);
   }
 
+  /** Start serving a repo now (added from the web app), without restarting the agent. */
+  async addRepo(repo: RepoConfig): Promise<void> {
+    if (this.consoles.has(repo.id)) throw new Error(`Already serving "${repo.id}".`);
+    const opened = await openRecipe(repo.recipe);
+    const c: Console = { repo, opened, child: null, port: null, restarts: 0 };
+    this.consoles.set(repo.id, c);
+    await this.startConsole(c);
+  }
+
+  /** Stop serving a repo. Its folder, run history and builds stay where they are. */
+  removeRepo(id: string): boolean {
+    const c = this.consoles.get(id);
+    if (!c) return false;
+    c.removed = true;
+    this.consoles.delete(id);
+    c.child?.kill("SIGTERM");
+    return true;
+  }
+
   private startConsole(c: Console): Promise<void> {
     return new Promise((resolve) => {
       const child = spawn(process.execPath, consoleEntry(), {
@@ -107,9 +128,8 @@ export class Agent {
             ? path.join(c.repo.path, c.opened.recipe.consoleState)
             : path.join(agentHome(), "repos", c.repo.id),
           ...(this.fake ? { RELEASE_AGENT_FAKE: "1" } : {}),
-          // sessions get the control server's MCP server with this agent's token
-          RELEASE_SERVER: this.config.server,
-          RELEASE_AGENT_TOKEN: this.config.token,
+          // sessions get the control server's MCP server with this agent's token (Nonaki mode only)
+          ...(this.config.server && this.config.token ? { RELEASE_SERVER: this.config.server, RELEASE_AGENT_TOKEN: this.config.token } : {}),
           RELEASE_CHROME: this.capabilities.includes("browser") ? "1" : "0",
         },
         stdio: ["ignore", "pipe", "inherit"],
@@ -136,13 +156,24 @@ export class Agent {
         c.port = null;
         c.child = null;
         if (!ready) resolve();
-        if (this.stopped) return;
+        if (this.stopped || c.removed) return;
         c.restarts++;
         const wait = Math.min(30_000, 1000 * 2 ** Math.min(c.restarts, 5));
         this.log(`console for ${c.repo.name} exited (${code}); restarting in ${Math.round(wait / 1000)}s`);
         setTimeout(() => void this.startConsole(c), wait);
       });
     });
+  }
+
+  /** Each repo's console, for the gateway. */
+  gatewayProjects() {
+    return [...this.consoles.values()].map(({ repo, opened, port }) => ({
+      id: repo.id,
+      name: repo.name,
+      path: repo.path,
+      recipe: opened.recipe.name,
+      port,
+    }));
   }
 
   repoSummaries() {
@@ -158,6 +189,7 @@ export class Agent {
   // ── server I/O ───────────────────────────────────────────────────────
 
   private async api(method: "GET" | "POST", pathname: string, body?: unknown): Promise<unknown> {
+    if (!this.config.server || !this.config.token) throw new Error("Not paired with a Nonaki server. Run `release-agent pair` first.");
     const res = await fetch(new URL(pathname, this.config.server), {
       method,
       headers: { authorization: `Bearer ${this.config.token}`, ...(body ? { "content-type": "application/json" } : {}) },
