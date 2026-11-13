@@ -119,8 +119,34 @@ export const BUILTIN_RISK_RULES = [...BUILTIN_BASH_RULES, ...Object.keys(BROWSER
 /** Claude in Chrome's tool for running JavaScript in a page. */
 export const BROWSER_SCRIPT_TOOL = "mcp__claude-in-chrome__javascript_tool";
 
+/** Claude in Chrome's tools that act on the page: clicks and keys, batches of them, form fields. */
+export const BROWSER_ACTION_TOOLS = [
+  "mcp__claude-in-chrome__computer",
+  "mcp__claude-in-chrome__browser_batch",
+  "mcp__claude-in-chrome__form_input",
+];
+
 /** Tools the PreToolUse hook sends to the approval check, as a matcher pattern. */
 export const CHECKED_TOOLS = `Bash|AskUserQuestion|${BROWSER_SCRIPT_TOOL}`;
+
+/** The browser action tools, as a second matcher for the same hook. */
+export const BROWSER_ACTION_MATCHER = BROWSER_ACTION_TOOLS.join("|");
+
+/** A button or action that sends, schedules or opens the send step of an email campaign. */
+const SEND_TARGET =
+  /\b(send now|send later|send test( email)?|schedule[sd]?|scheduling|review (&|and) send|save (&|and) review)\b|\bsend(s|ing)? (it|the|this|out)\b|\bsend(s|ing)? (campaign|email|newsletter)\b/i;
+
+/** Clicks and drags: the actions that can press a button. */
+const CLICK_ACTIONS = new Set(["left_click", "right_click", "double_click", "triple_click", "left_click_drag", "click"]);
+
+/** Every `{ action, … }` object in a tool input, however deeply a batch nests them. */
+function actionsIn(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) return value.flatMap(actionsIn);
+  if (!value || typeof value !== "object") return [];
+  const obj = value as Record<string, unknown>;
+  const own = typeof obj.action === "string" ? [obj] : [];
+  return [...own, ...Object.values(obj).flatMap(actionsIn)];
+}
 
 /**
  * Split a command line into the commands it runs, so a rule anchored on one
@@ -143,12 +169,18 @@ export interface RiskAssessor {
   rules: string[];
   assessBashRisk(command: unknown): RiskMatch | null;
   assessBrowserScriptRisk(input: unknown): RiskMatch | null;
+  /** A click in the user's browser on something that sends or schedules. */
+  assessBrowserActionRisk(input: unknown): RiskMatch | null;
   /** The risk of any tool call the agent checks, or null when it may run. */
   assessToolRisk(toolName: string, input: unknown): RiskMatch | null;
+  /** True when the stage's recipe `forbid` list refuses this rule outright. */
+  isForbidden(stageId: string, rule: string): boolean;
+  /** The stage's recipe `forbid` list (empty for chats and other stages). */
+  forbiddenRules(stageId: string): string[];
 }
 
 /** Built-in rules plus the recipe's, in order. */
-export function createRiskAssessor(recipe?: Pick<Recipe, "risk">): RiskAssessor {
+export function createRiskAssessor(recipe?: Pick<Recipe, "risk"> & Partial<Pick<Recipe, "stages">>): RiskAssessor {
   const messages = recipe?.risk?.messages ?? {};
   const also = recipe?.risk?.alsoMatch ?? {};
   const rules: RiskRule[] = BUILTIN.map((r) => {
@@ -205,19 +237,56 @@ export function createRiskAssessor(recipe?: Pick<Recipe, "risk">): RiskAssessor 
     if (clicks && /send now|send later|schedule|review & send|save & review|send test/i.test(code)) {
       return { rule: "browser-send", reason: browserReason("browser-send"), irreversible: true };
     }
+    // undoing a page's send guard: draft commands disable the send buttons
+    // first, marking them "disarmed" and watching with a "SendGuard" observer
+    const undoesGuard =
+      /SendGuard\w*\s*(\?\.|\.)\s*disconnect\b/i.test(code) ||
+      (/disarmed/i.test(code) &&
+        (/removeAttribute\s*\(\s*['"`]disabled['"`]/.test(code) ||
+          /\.disabled\s*=\s*false\b/.test(code) ||
+          /pointerEvents\s*=\s*['"`](auto|)['"`]/.test(code) ||
+          /\bdelete\b[^;\n]*[Dd]isarmed/.test(code)));
+    if (undoesGuard) return { rule: "browser-send", reason: browserReason("browser-send"), irreversible: true };
     if (clicksPublish || setsPublishStatus) return { rule: "browser-publish", reason: browserReason("browser-publish"), irreversible: true };
     if (/\.submit\s*\(\s*\)/.test(code)) return { rule: "browser-submit", reason: browserReason("browser-submit"), irreversible: false };
     return null;
   };
 
+  /**
+   * A click (alone or in a batch) whose description or target names a send,
+   * schedule or review-and-send button. A click is described by what it says
+   * it does (`action_summary`, `text`), since a coordinate can't be read.
+   */
+  const assessBrowserActionRisk = (input: unknown): RiskMatch | null => {
+    for (const action of actionsIn(input)) {
+      if (!CLICK_ACTIONS.has(String(action.action))) continue;
+      const described = ["action_summary", "text", "query", "description", "element", "target"]
+        .map((k) => action[k])
+        .filter((v): v is string => typeof v === "string")
+        .join("\n");
+      if (SEND_TARGET.test(described)) return { rule: "browser-send", reason: browserReason("browser-send"), irreversible: true };
+    }
+    return null;
+  };
+
+  const forbidden = new Map((recipe?.stages ?? []).map((s) => [s.id, new Set(s.forbid ?? [])]));
+
   return {
     rules: rules.map((r) => r.rule),
     assessBashRisk,
     assessBrowserScriptRisk,
+    assessBrowserActionRisk,
     assessToolRisk(toolName, input) {
       if (toolName === "Bash") return assessBashRisk((input as Record<string, unknown> | null)?.command);
       if (toolName === BROWSER_SCRIPT_TOOL) return assessBrowserScriptRisk(input);
+      if (BROWSER_ACTION_TOOLS.includes(toolName)) return assessBrowserActionRisk(input);
       return null;
+    },
+    isForbidden(stageId, rule) {
+      return forbidden.get(stageId)?.has(rule) ?? false;
+    },
+    forbiddenRules(stageId) {
+      return [...(forbidden.get(stageId) ?? [])];
     },
   };
 }

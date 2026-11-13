@@ -89,13 +89,14 @@ export class Agent {
   // ── consoles ─────────────────────────────────────────────────────────
 
   async load(): Promise<void> {
+    // Before the consoles start: each one is told whether to attach Claude in Chrome from these.
+    this.capabilities = detectCapabilities(this.config.capabilities);
     for (const repo of this.config.repos) {
       const opened = await openRecipe(repo.recipe);
       const c: Console = { repo, opened, child: null, port: null, restarts: 0 };
       this.consoles.set(repo.id, c);
       await this.startConsole(c);
     }
-    this.capabilities = detectCapabilities(this.config.capabilities);
   }
 
   /** Start serving a repo now (added from the web app), without restarting the agent. */
@@ -131,6 +132,9 @@ export class Agent {
           // sessions get the control server's MCP server with this agent's token (Nonaki mode only)
           ...(this.config.server && this.config.token ? { RELEASE_SERVER: this.config.server, RELEASE_AGENT_TOKEN: this.config.token } : {}),
           RELEASE_CHROME: this.capabilities.includes("browser") ? "1" : "0",
+          // Marketing videos: one home on this machine, a folder per repo inside it
+          RELEASE_MARKETING_HOME: path.join(agentHome(), "marketing"),
+          RELEASE_REPO_ID: c.repo.id,
         },
         stdio: ["ignore", "pipe", "inherit"],
       });

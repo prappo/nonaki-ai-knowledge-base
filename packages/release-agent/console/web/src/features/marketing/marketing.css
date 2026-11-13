@@ -1,0 +1,598 @@
+/* Marketing: promo videos made by Claude Code sessions on the agent's machine. */
+
+.mk-app {
+	display: grid;
+	grid-template-columns: 240px minmax(0, 1fr);
+	height: 100vh;
+	background: var(--window);
+	color: var(--label);
+	font-family: var(--font);
+}
+
+/* ── sidebar ───────────────────────────────────────────────────────────── */
+
+.mk-sidebar {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-height: 0;
+	padding: 14px 10px;
+	border-right: 0.5px solid var(--separator);
+	background: var(--sidebar);
+}
+
+.mk-sidebar-head {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 2px 6px 4px;
+	font-size: 13px;
+}
+
+.mk-new {
+	justify-content: center;
+}
+
+.mk-list {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 2px;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.mk-list-empty {
+	padding: 8px;
+	color: var(--tertiary);
+	font-size: 12px;
+}
+
+.mk-list-item,
+.mk-setup-link {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 7px 8px;
+	border: 0;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.mk-list-item:hover,
+.mk-setup-link:hover {
+	background: var(--hover);
+}
+
+.mk-list-item.is-selected,
+.mk-setup-link.is-selected {
+	background: var(--selected);
+}
+
+.mk-list-text {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.mk-list-title {
+	overflow: hidden;
+	font-size: 13px;
+	font-weight: 500;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mk-list-sub {
+	color: var(--secondary);
+	font-size: 11px;
+}
+
+.mk-dot {
+	flex: none;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--blue);
+	animation: mk-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes mk-pulse {
+	50% {
+		opacity: 0.35;
+	}
+}
+
+.mk-setup-link {
+	font-size: 13px;
+	color: var(--secondary);
+}
+
+/* ── main ──────────────────────────────────────────────────────────────── */
+
+.mk-main {
+	position: relative;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.mk-banner {
+	margin: 12px 20px 0;
+}
+
+.mk-loading {
+	display: grid;
+	place-items: center;
+	height: 100%;
+	color: var(--secondary);
+}
+
+.mk-page {
+	height: 100%;
+	padding: 28px 24px 48px;
+	overflow-y: auto;
+}
+
+.mk-narrow > * {
+	max-width: 640px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.mk-page h1,
+.mk-video-head h1 {
+	margin-top: 0;
+	margin-bottom: 4px;
+	font-family: var(--font-display);
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.mk-back {
+	display: flex;
+	margin-bottom: 8px;
+}
+
+.mk-form {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin-top: 20px;
+	padding: 18px;
+	border-radius: var(--radius-lg);
+	background: var(--surface);
+	box-shadow: var(--shadow);
+}
+
+.mk-field {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 5px;
+	min-width: 0;
+}
+
+.mk-field .field-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.mk-field textarea {
+	resize: vertical;
+}
+
+.mk-field-sm {
+	flex: 0 0 140px;
+}
+
+.mk-row {
+	display: flex;
+	gap: 12px;
+}
+
+.mk-check {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+}
+
+.mk-checks {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 20px auto 0;
+	padding: 6px;
+	list-style: none;
+	border-radius: var(--radius-lg);
+	background: var(--surface);
+	box-shadow: var(--shadow);
+}
+
+.mk-checks li {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 9px 10px;
+}
+
+.mk-checks li > svg {
+	flex: none;
+	margin-top: 2px;
+}
+
+.mk-checks li div {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: 13px;
+}
+
+.mk-checks li .muted {
+	font-size: 12px;
+}
+
+.mk-folder {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 16px;
+}
+
+/* ── a video ───────────────────────────────────────────────────────────── */
+
+.mk-video {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+	gap: 16px;
+	height: 100%;
+	padding: 20px;
+}
+
+.mk-video-main {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-height: 0;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+/* the column scrolls: its parts keep their size instead of shrinking to fit */
+.mk-video-main > * {
+	flex-shrink: 0;
+}
+
+.mk-video-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.mk-head-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.mk-final {
+	overflow: hidden;
+	border-radius: var(--radius-lg);
+	background: #000;
+	box-shadow: var(--shadow-raised);
+}
+
+.mk-final video {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	background: #000;
+}
+
+.mk-final-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 8px 12px;
+	background: var(--surface);
+}
+
+.mk-brief {
+	padding: 10px 14px;
+	border-radius: var(--radius);
+	background: var(--surface);
+	box-shadow: var(--shadow);
+	font-size: 13px;
+}
+
+.mk-brief summary {
+	color: var(--secondary);
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.mk-brief dl {
+	display: grid;
+	grid-template-columns: 110px minmax(0, 1fr);
+	gap: 6px 12px;
+	margin: 10px 0 2px;
+}
+
+.mk-brief dt {
+	color: var(--secondary);
+}
+
+.mk-brief dd {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.mk-steps {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mk-step {
+	border-radius: var(--radius-lg);
+	background: var(--surface);
+	box-shadow: var(--shadow);
+}
+
+.mk-step.is-running {
+	box-shadow: 0 0 0 1.5px var(--blue), var(--shadow);
+}
+
+.mk-step.is-blocked .mk-step-title strong,
+.mk-step.is-skipped .mk-step-title strong {
+	color: var(--secondary);
+}
+
+.mk-step-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 14px;
+}
+
+.mk-step-index {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--fill);
+	color: var(--secondary);
+	font-size: 11.5px;
+	font-weight: 700;
+}
+
+.mk-step.is-done .mk-step-index {
+	background: var(--green-tint);
+	color: var(--green-text);
+}
+
+.mk-step.is-running .mk-step-index {
+	background: var(--blue-tint);
+	color: var(--blue-text);
+}
+
+.mk-step-icon {
+	display: grid;
+	flex: none;
+	place-items: center;
+	color: var(--secondary);
+}
+
+.mk-step-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.mk-step-title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	font-size: 13.5px;
+}
+
+.mk-step-text p {
+	margin: 2px 0 0;
+}
+
+.mk-step-actions {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 4px;
+}
+
+.mk-notes {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 0 14px 12px 46px;
+}
+
+.mk-notes textarea {
+	width: 100%;
+	resize: vertical;
+}
+
+.mk-step-body {
+	padding: 0 14px 14px 46px;
+}
+
+.mk-output {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.mk-output audio,
+.mk-clip audio {
+	width: 100%;
+	height: 32px;
+}
+
+.mk-clips {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 6px 12px;
+}
+
+.mk-clip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.mk-clip .mono {
+	flex: none;
+	width: 28px;
+	color: var(--secondary);
+}
+
+.mk-review img {
+	display: block;
+	width: 100%;
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.mk-script {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.mk-script-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.mk-spacer {
+	flex: 1;
+}
+
+.mk-script-view {
+	max-height: 520px;
+	padding: 4px 14px;
+	overflow: auto;
+	border-radius: var(--radius);
+	background: var(--surface-sunken);
+}
+
+.mk-script-view .markdown table {
+	font-size: 12px;
+}
+
+.mk-script-text {
+	width: 100%;
+	min-height: 420px;
+	font-family: var(--mono);
+	font-size: 12.5px;
+	line-height: 1.5;
+	resize: vertical;
+}
+
+/* ── the session ───────────────────────────────────────────────────────── */
+
+.mk-session {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.mk-session > .run {
+	flex: 1;
+}
+
+.mk-session-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	height: 100%;
+	padding: 24px;
+	border-radius: var(--radius-lg);
+	background: var(--surface);
+	box-shadow: var(--shadow);
+	color: var(--secondary);
+	font-size: 13px;
+	text-align: center;
+}
+
+@media (max-width: 1100px) {
+	.mk-video {
+		grid-template-columns: minmax(0, 1fr);
+		height: auto;
+		min-height: 100%;
+		overflow-y: auto;
+	}
+
+	.mk-video-main {
+		overflow: visible;
+	}
+
+	.mk-session {
+		min-height: 520px;
+	}
+}
+
+@media (max-width: 720px) {
+	.mk-app {
+		grid-template-columns: minmax(0, 1fr);
+		height: auto;
+		min-height: 100vh;
+	}
+
+	.mk-sidebar {
+		border-right: 0;
+		border-bottom: 0.5px solid var(--separator);
+	}
+
+	.mk-list {
+		max-height: 200px;
+	}
+
+	.mk-row {
+		flex-direction: column;
+	}
+
+	.mk-field-sm {
+		flex: 1;
+	}
+
+	.mk-video {
+		padding: 16px;
+	}
+
+	.mk-step-head {
+		flex-wrap: wrap;
+	}
+
+	.mk-step-body,
+	.mk-notes {
+		padding-left: 14px;
+	}
+}

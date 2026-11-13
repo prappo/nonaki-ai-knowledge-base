@@ -43,11 +43,12 @@ release-agent tunnel status                      # is https://agent.example.com 
   127.0.0.1:7420 and answers 404 to anything else. Nothing listens on a public
   port. `tunnel run` runs it in the foreground; `tunnel remove [--delete]`
   takes it down.
-- **`autostart on`** installs a launchd agent (macOS) or systemd user service
-  (Linux) for the gateway and the tunnel, with your shell's PATH so git, gh and
-  Claude are found. They start at login and restart if they stop. Logs are in
-  `~/.release-agent/logs/`. `autostart off` removes them. (Windows: run them
-  yourself for now.)
+- **`autostart on`** installs a launchd agent (macOS), a systemd user service
+  (Linux), or a Task Scheduler logon task running a hidden, restarting
+  PowerShell loop (Windows; not yet tried on a real Windows machine), for the
+  gateway and the tunnel, with your shell's PATH so git, gh and Claude are
+  found. They start at login and restart if they stop. Logs are in
+  `~/.release-agent/logs/`. `autostart off` removes them.
 - Quick tunnels (trycloudflare.com) aren't used: they don't carry the live
   event streams.
 
@@ -65,7 +66,9 @@ release-agent tunnel status                      # is https://agent.example.com 
   `/projects/<id>/api/...`, which streams to that repo's console (event
   streams included). For Add project: `GET /discover` (git repos in the allowed
   folders, never through symlinks), `GET /recipes`, `POST /check`,
-  `POST /projects`, `POST /projects/<id>/remove`. Every folder is resolved to
+  `POST /projects`, `POST /projects/<id>/remove`, and
+  `POST /projects/<id>/recipe` (switch recipes; refused while a run or agent
+  session is going, since it restarts that console). Every folder is resolved to
   its real path and must sit inside an allowed folder.
 - **Live status:** `GET /events` is an event stream of every project's branch,
   changes, live run and agent session, and latest CI build: a snapshot, then
@@ -73,13 +76,38 @@ release-agent tunnel status                      # is https://agent.example.com 
   `GET /api/live` and watches each repo's `.git`, only while someone watches. EventSource can't send headers, so `?access_token=` works
   too; the gateway strips it before the console sees the request.
 
+## Marketing videos
+
+The Nonaki **Marketing** page (`/marketing`) makes promo videos for a repo's
+product with AI, on this machine. A video is a brief plus five steps, each a
+Claude Code session started by the console (cwd = the repo, so it uses the
+product's real UI copy, docs and screenshots):
+
+1. **Write the script**: the story scene by scene. You edit and approve it on
+   the page; nothing else runs until you do, and an edited script needs
+   approving again.
+2. **Pick the music**: a royalty-free track from Pixabay, through Claude in Chrome.
+3. **Record the voiceover**: ElevenLabs, one clip per scene (optional).
+4. **Build the scenes**: a Remotion project, checked from a contact sheet of frames.
+5. **Render the video**: the 1920×1080 MP4, played and downloaded on the page.
+
+Everything lives in `~/.release-agent/marketing/`: one shared Remotion install
+(`npm install` there, run once by the first build), the starter kit and a
+finished example (`marketing-kit/` in this package), the ElevenLabs key
+(`elevenlabs.key`, 0600, given only to the voiceover session), and a folder per
+repo and video. Each step's instructions are written to the video's
+`.instructions/<step>.md`; *Run again* with notes revises a step.
+
+Needs `ffmpeg`, Chrome with the Claude extension (music), and an ElevenLabs API
+key with Text to Speech and Voices access (voiceover, added in Setup).
+
 ## Recipe at a glance
 
 | Key | What it holds |
 |---|---|
 | `vars` | Repo-level variables (sibling checkouts…), from settings and `{env.*}`. |
 | `version` | An anchored `pattern`. Its named groups become variables, and `vars` derives more from them (`{ "if": "hotfix", "then": …, "else": … }`). |
-| `groups`, `stages` | The pipeline. Each stage has a `prompt` (the command as typed), a `doneWhen` check, `blockedUntil`, `irreversible`, `requires` (agent capabilities such as `browser`), and an optional `status` hook. |
+| `groups`, `stages` | The pipeline. Each stage has a `prompt` (the command as typed), a `doneWhen` check, `blockedUntil`, `irreversible`, `requires` (agent capabilities such as `browser`), `forbid` (risk rules refused outright in that stage, with no approval card, e.g. `["browser-send"]` on a stage that only drafts an email), and an optional `status` hook. |
 | `probes` | Remote lookups shared by stages: `githubRelease`, or a `script` hook. Cached for 60 s, failures are not cached, and `null` means the lookup failed. |
 | `settings` | Per-machine paths in a gitignored JSON file, with defaults, an `env` for sessions, and validation rules. |
 | `checks` | Setup checks: `gitBranch`, `previousTag`, `workingTree`, `command`, `setting`, `dockerContainer`, `dirEntry`, `localWpSite`, `script`. |

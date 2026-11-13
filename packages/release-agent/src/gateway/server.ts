@@ -12,6 +12,7 @@
  *   POST /check    { path, recipe }     would this folder and recipe work?
  *   POST /projects { path, recipe, name? }   serve a new project
  *   POST /projects/<id>/remove          stop serving it (the folder stays)
+ *   POST /projects/<id>/recipe { recipe }   switch it to another recipe
  *   GET  /events                        live status of every project (an event stream)
  *
  * Every request but /health needs the web app's token (see token.ts): a full
@@ -44,6 +45,7 @@ export interface ProjectManager {
   check(body: Record<string, unknown>): Promise<unknown>;
   add(body: Record<string, unknown>, who: string): Promise<unknown>;
   remove(id: string, who: string): Promise<boolean>;
+  setRecipe(id: string, body: Record<string, unknown>, who: string): Promise<unknown>;
 }
 
 export interface GatewayOptions {
@@ -263,6 +265,9 @@ export function createGatewayHandler(options: GatewayOptions) {
           if (url.pathname === "/recipes" && req.method === "GET") return send(res, 200, { recipes: await manage.recipes() });
           if (url.pathname === "/check" && req.method === "POST") return send(res, 200, await manage.check(await readJson(req)));
           if (url.pathname === "/projects" && req.method === "POST") return send(res, 201, await manage.add(await readJson(req), who));
+          if (parts.length === 3 && parts[0] === "projects" && parts[2] === "recipe" && req.method === "POST") {
+            return send(res, 200, await manage.setRecipe(decodeURIComponent(parts[1]), await readJson(req), who));
+          }
           if (parts.length === 3 && parts[0] === "projects" && parts[2] === "remove" && req.method === "POST") {
             const removed = await manage.remove(decodeURIComponent(parts[1]), who);
             return send(res, removed ? 200 : 404, removed ? { ok: true } : { error: "This machine doesn't serve that project." });

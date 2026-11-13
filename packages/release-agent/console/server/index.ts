@@ -13,6 +13,8 @@
  *   RELEASE_SERVER, RELEASE_AGENT_TOKEN   the control server and this agent's
  *                    token, for its MCP server (never passed on to sessions)
  *   RELEASE_CHROME=0 the laptop has no browser: leave Claude in Chrome out
+ *   RELEASE_MARKETING_HOME, RELEASE_REPO_ID   where Marketing videos live
+ *                    (shared by every repo on the machine) and this repo's id there
  */
 
 import http from 'node:http';
@@ -29,6 +31,7 @@ import { mcpAccessFromEnv, sessionMcpOptions, sessionProcessEnv } from './runs/m
 import { RunManager, setRiskAssessor, type QueryFn } from './runs/runner.ts';
 import { Sequencer } from './runs/sequence.ts';
 import { FileRunStore } from './runs/store.ts';
+import { Marketing, stageOfRun } from './marketing/marketing.ts';
 import { ProbeCache } from '../../src/recipe/hooks.ts';
 
 const stateRoot = path.resolve( process.env.RELEASE_STATE ?? path.join( root, '.release-agent' ) );
@@ -66,6 +69,30 @@ const chats = new RunManager(
 );
 chats.confirmPhrase = 'confirm';
 
+// Marketing videos: their own sessions and history. cwd is the repo (to read the
+// product's real UI and docs); the videos themselves live in the marketing home.
+const marketingStore = new Marketing(
+	path.resolve( process.env.RELEASE_MARKETING_HOME ?? path.join( stateRoot, '.state', 'marketing' ) ),
+	process.env.RELEASE_REPO_ID ?? path.basename( root ),
+	{ chrome: mcpAccess.chrome }
+);
+const marketingRuns = new RunManager(
+	root,
+	queryFn,
+	( stageId ) => {
+		const stage = stageOfRun( stageId );
+		const key = stage === 'voice' ? marketingStore.elevenLabsKey() : null;
+		return {
+			// only the voiceover session gets the ElevenLabs key
+			env: { ...sessionProcessEnv( process.env ), ...sessionEnv( root ), ...( key ? { ELEVENLABS_API_KEY: key } : {} ) },
+			...sessionMcpOptions( mcpAccess, { chrome: mcpAccess.chrome && stage === 'music' } ),
+			additionalDirectories: [ marketingStore.home ],
+		};
+	},
+	new FileRunStore( path.join( stateRoot, '.state', fake ? 'fake-marketing' : 'marketing-runs' ) )
+);
+marketingRuns.confirmPhrase = 'confirm';
+
 const builds = recipe.build
 	? new BuildManager( {
 			root,
@@ -85,6 +112,7 @@ const server = http.createServer(
 		manager,
 		probes: new ProbeCache(),
 		chats,
+		marketing: { store: marketingStore, runs: marketingRuns },
 		ciBuilds: recipe.build?.ciWorkflow ? new CiBuilds( root ) : undefined,
 		sequencer,
 		builds,
@@ -113,6 +141,7 @@ server.listen( 0, host, () => {
 
 function shutdown(): void {
 	manager.latest?.stop( 'interrupted' );
+	marketingRuns.latest?.stop( 'interrupted' );
 	server.close( () => process.exit( 0 ) );
 	setTimeout( () => process.exit( 0 ), 2000 ).unref();
 }

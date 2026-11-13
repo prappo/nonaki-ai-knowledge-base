@@ -113,6 +113,10 @@ describe("gateway", () => {
           },
           add: async (body, who) => ({ project: { id: "new", path: body.path, by: who } }),
           remove: async (id) => id === "wpsp",
+          setRecipe: async (id, body) => {
+            if (id !== "wpsp") throw Object.assign(new Error("This machine doesn't serve that project."), { status: 404 });
+            return { project: { id, recipe: body.recipe } };
+          },
         },
       },
       0
@@ -206,6 +210,8 @@ describe("gateway", () => {
     const added = await post("/projects", { path: "/repo/a" });
     expect(added.status).toBe(201);
     expect((await json(added)).project.by).toBe("p@awesomemotive.com");
+    expect(await json(await post("/projects/wpsp/recipe", { recipe: "repo" }))).toEqual({ project: { id: "wpsp", recipe: "repo" } });
+    expect((await post("/projects/nope/recipe", { recipe: "repo" })).status).toBe(404);
     expect((await post("/projects/wpsp/remove")).status).toBe(200);
     expect((await post("/projects/nope/remove")).status).toBe(404);
     expect((await fetch(`${base}/check`, { method: "POST", headers: auth(), body: "not json" })).status).toBe(400);

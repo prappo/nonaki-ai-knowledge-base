@@ -37,8 +37,9 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
  * An agent's console, embedded and tunnelled to the laptop it runs on:
  *   view "console" — the Release Console (Pipeline, Library, Builds, Changes, History, Setup)
  *   view "agent"   — free-prompt Claude Code sessions in the repo, like the terminal
+ *   view "marketing" — promo videos for the repo's product, made by Claude Code sessions
  */
-export function AgentConsole({ view, title }: { view: "console" | "agent"; title: string }) {
+export function AgentConsole({ view, title }: { view: "console" | "agent" | "marketing"; title: string }) {
   const [agents, setAgents] = useState<Agent[] | null>(null);
   const [agentId, setAgentId] = useState("");
   const [repoId, setRepoId] = useState("");
@@ -73,7 +74,7 @@ export function AgentConsole({ view, title }: { view: "console" | "agent"; title
   const repo = agent?.repos.find((r) => r.id === repoId) ?? null;
   const consoleUrl =
     agent && repo
-      ? `/release-console/index.html?${view === "agent" ? "view=agent&" : ""}api=${encodeURIComponent(`/api/releases/console/${agent.id}/${repo.id}`)}`
+      ? `/release-console/index.html?${view === "console" ? "" : `view=${view}&`}api=${encodeURIComponent(`/api/releases/console/${agent.id}/${repo.id}`)}`
       : null;
 
   // the console follows the app's light/dark toggle (same origin, so set it directly)
@@ -111,7 +112,7 @@ export function AgentConsole({ view, title }: { view: "console" | "agent"; title
 
       {agents && agents.length > 0 && (
         <div className="flex flex-none flex-wrap items-center gap-2 border-b border-hairline px-6 py-2">
-          <Icon name={view === "agent" ? "terminal" : "rocket"} size={14} className="text-muted" />
+          <Icon name={view === "agent" ? "terminal" : view === "marketing" ? "video" : "rocket"} size={14} className="text-muted" />
           <select
             value={agentId}
             onChange={(e) => {
@@ -156,7 +157,7 @@ export function AgentConsole({ view, title }: { view: "console" | "agent"; title
           <div className="flex items-baseline gap-2.5">
             <h1 className="text-[21px] font-semibold tracking-[-0.01em]">{title}</h1>
             <span className="text-xs text-muted">
-              {view === "agent" ? "Claude Code on your laptop, from here" : "run release stages on your laptop, from here"}
+              {view === "agent" ? "Claude Code on your laptop, from here" : view === "marketing" ? "make promo videos with AI on your laptop, from here" : "run release stages on your laptop, from here"}
             </span>
           </div>
           <ConnectAgent onPaired={loadAgents} />

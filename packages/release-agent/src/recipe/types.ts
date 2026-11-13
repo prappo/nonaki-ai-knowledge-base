@@ -117,6 +117,12 @@ export interface StageDef {
    * "browser" also starts the session with Claude in Chrome.
    */
   requires?: string[];
+  /**
+   * Risk rule ids (built-in or `risk.extra`) that are refused outright in this
+   * stage, instead of asking for approval: nobody can approve them by mistake.
+   * For example ["browser-send"] on a stage that must only draft an email.
+   */
+  forbid?: string[];
   /** When disk shows the stage done. Omitted = not tracked. */
   doneWhen?: Check;
   /** Report which `fileExists` checks inside `doneWhen` fail (file names). */

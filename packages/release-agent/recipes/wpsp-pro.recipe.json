@@ -376,13 +376,17 @@
       "group": "publish",
       "title": "Draft email campaign",
       "prompt": "/wpsp-draft-email-campaign {version}",
-      "summary": "Creates the release announcement as a draft campaign in Lindris through your logged-in Chrome session, with the newsletter, subject, preview text and sender. Never sends or schedules: it disables every send button in the page first, and saves with plain Save only.",
+      "summary": "Creates the release announcement as a draft campaign in Lindris through your logged-in Chrome session, with the newsletter, subject, preview text and sender. Never sends or schedules: it disables every send button in the page first, and saves with plain Save only. The console refuses any send, schedule or send-test click, any script that re-enables those buttons, and any write request from the page, with no way to approve them.",
       "gates": [
         "Approve the campaign before anything is created",
         "Log in to Lindris in Chrome if needed"
       ],
       "requires": [
         "browser"
+      ],
+      "forbid": [
+        "browser-send",
+        "browser-write"
       ],
       "blockedUntil": [
         {

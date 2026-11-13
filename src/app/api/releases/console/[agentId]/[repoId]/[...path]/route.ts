@@ -132,6 +132,21 @@ async function auditAction(agentName: string, agentId: string, repoId: string, p
     if (path === "/api/reset/discard") return ["release.changes_discarded", `Discarded ${Array.isArray(data.paths) ? data.paths.length : 0} change(s) ${where}`];
     if (path === "/api/reset/restore") return ["release.backup_restored", `Restored a discard backup ${where}`];
     if (path === "/api/reset/console-data") return ["release.data_deleted", `Deleted release console data ${where}`];
+    // Marketing (the ElevenLabs key itself is never recorded)
+    if (path === "/api/marketing/setup") return ["marketing.key_saved", `${data.elevenLabsKey ? "Saved" : "Removed"} the ElevenLabs key ${where}`];
+    if (path === "/api/marketing/videos") return ["marketing.video_created", `Created the marketing video "${String(data.title ?? "").slice(0, 120)}" ${where}`];
+    const video = /^\/api\/marketing\/videos\/([^/]+)\/(script|approve|delete|stages\/([a-z]+))$/.exec(path);
+    if (video) {
+      const [, slug, action, stage] = video;
+      if (action === "script") return ["marketing.script_edited", `Edited the script of ${slug} ${where}`];
+      if (action === "approve") return [data.approved === false ? "marketing.script_unapproved" : "marketing.script_approved", `${data.approved === false ? "Withdrew approval of" : "Approved"} the script of ${slug} ${where}`];
+      if (action === "delete") return ["marketing.video_deleted", `Deleted the marketing video ${slug} ${where}`];
+      return ["marketing.stage_started", `Started ${stage} for the marketing video ${slug} ${where}`];
+    }
+    if (/^\/api\/marketing-runs\/[^/]+\/gates\//.test(path) && data.type === "approval") {
+      return [data.allow ? "marketing.approved" : "marketing.denied", `${data.allow ? "Approved" : "Denied"} an action in a Marketing session ${where}`];
+    }
+    if (/^\/api\/marketing-runs\/[^/]+\/stop$/.test(path)) return ["marketing.session_stopped", `Stopped a Marketing session ${where}`];
     return null;
   })();
   if (!entry) return;
@@ -143,6 +158,7 @@ async function auditAction(agentName: string, agentId: string, repoId: string, p
       repoId,
       path,
       ...(data.stageId ? { stageId: data.stageId } : {}),
+      ...(path.startsWith("/api/marketing") && typeof data.notes === "string" && data.notes ? { notes: data.notes.slice(0, 2000) } : {}),
       ...(data.version ? { version: data.version } : {}),
       ...(path === "/api/chat" ? { prompt: String(data.prompt ?? "").slice(0, 2000), permissions: data.permissions, chrome: data.chrome === true } : {}),
     },

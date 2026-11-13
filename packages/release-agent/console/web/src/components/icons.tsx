@@ -5,6 +5,11 @@
 
 import {
 	AlertCircle,
+	Clapperboard,
+	FileText,
+	Film,
+	Mic,
+	Music,
 	BadgeCheck,
 	Mail,
 	MessageCircle,
@@ -46,6 +51,11 @@ export const STAGE_ICONS: Record<string, LucideIcon> = {
 	'lite-sync': RefreshCw,
 	'lite-publish': Rocket,
 	'lite-wporg': Globe,
+	'marketing-script': FileText,
+	'marketing-music': Music,
+	'marketing-voice': Mic,
+	'marketing-build': Clapperboard,
+	'marketing-render': Film,
 };
 
 export function StageIcon( { id, size = 16 }: { id: string; size?: number } ) {

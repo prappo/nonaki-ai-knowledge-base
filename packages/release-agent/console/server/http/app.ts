@@ -33,6 +33,8 @@ import {
 import { contentTypeFor, FileAccessError, listReleaseFiles, readTextFile, resolveRepoPath, writeTextFile } from '../repo/files.ts';
 import { diffFor, runGit, workingTreeChanges, type GitRunner } from '../repo/git.ts';
 import { RunConflictError, type GateAnswer, type RunEvent, type RunManager } from '../runs/runner.ts';
+import { MarketingError, runStageId, STAGE_IDS, stageOfRun, type Marketing, type MarketingStageId } from '../marketing/marketing.ts';
+import { stageInstructions, stagePrompt as marketingPrompt } from '../marketing/prompts.ts';
 import { planSequence, SequenceError, type Sequencer } from '../runs/sequence.ts';
 import { ProbeCache } from '../../../src/recipe/hooks.ts';
 import { CiBuildError, parseBranch, pushedBranches, type CiBuilds } from '../release/ciBuilds.ts';
@@ -76,6 +78,8 @@ export interface AppOptions {
 	ciBuilds?: CiBuilds;
 	/** Agent sessions (free-prompt Claude Code), kept apart from release runs. */
 	chats?: RunManager;
+	/** Marketing videos and the sessions that make them. */
+	marketing?: { store: Marketing; runs: RunManager };
 }
 
 class HttpError extends Error {
@@ -203,6 +207,51 @@ export function pipeFile( file: string, res: http.ServerResponse ): void {
 		.pipe( res );
 }
 
+const MEDIA_TYPES: Record<string, string> = {
+	'.mp4': 'video/mp4',
+	'.mp3': 'audio/mpeg',
+	'.wav': 'audio/wav',
+	'.png': 'image/png',
+	'.jpg': 'image/jpeg',
+	'.jpeg': 'image/jpeg',
+	'.svg': 'image/svg+xml',
+	'.md': 'text/plain; charset=utf-8',
+	'.json': 'application/json; charset=utf-8',
+};
+
+/** Sends a media file, honouring a single Range request so video and audio can seek. */
+function sendMedia( req: http.IncomingMessage, res: http.ServerResponse, file: string, download: boolean ): void {
+	const size = statSync( file ).size;
+	const headers: Record<string, string | number> = {
+		'Content-Type': MEDIA_TYPES[ path.extname( file ).toLowerCase() ] ?? 'application/octet-stream',
+		'Accept-Ranges': 'bytes',
+		'Cache-Control': 'no-store',
+		'X-Content-Type-Options': 'nosniff',
+		...( download ? { 'Content-Disposition': `attachment; filename="${ path.basename( file ).replace( /"/g, '' ) }"` } : {} ),
+	};
+	const range = /^bytes=(\d*)-(\d*)$/.exec( String( req.headers.range ?? '' ) );
+
+	if ( range && size > 0 ) {
+		const start = range[ 1 ] ? Number( range[ 1 ] ) : Math.max( 0, size - Number( range[ 2 ] ) );
+		const end = range[ 1 ] && range[ 2 ] ? Math.min( Number( range[ 2 ] ), size - 1 ) : size - 1;
+
+		if ( start > end || start >= size ) {
+			res.writeHead( 416, { 'Content-Range': `bytes */${ size }` } );
+			res.end();
+			return;
+		}
+
+		res.writeHead( 206, { ...headers, 'Content-Range': `bytes ${ start }-${ end }/${ size }`, 'Content-Length': end - start + 1 } );
+		createReadStream( file, { start, end } )
+			.on( 'error', () => res.destroy() )
+			.pipe( res );
+		return;
+	}
+
+	res.writeHead( 200, { ...headers, 'Content-Length': size } );
+	pipeFile( file, res );
+}
+
 function serveStatic( staticDir: string, urlPath: string, res: http.ServerResponse ): void {
 	const decoded = decodeURIComponent( urlPath );
 	let file = path.resolve( staticDir, `.${ decoded }` );
@@ -296,6 +345,10 @@ function asHttpError( error: unknown, status = 409 ): HttpError {
 
 	if ( error instanceof RunConflictError ) {
 		return new HttpError( 409, error.message );
+	}
+
+	if ( error instanceof MarketingError ) {
+		return new HttpError( error.status, error.message );
 	}
 
 	if ( error instanceof ConfigError ) {
@@ -392,6 +445,136 @@ export function createApp( options: AppOptions ): http.RequestListener {
 		return { ...context, probes };
 	};
 	const staticDir = options.staticDir ? path.resolve( options.staticDir ) : null;
+
+	/** The marketing run going now: which video and which stage. */
+	const activeMarketing = (): { slug: string; stage: MarketingStageId } | null => {
+		const run = options.marketing?.runs.latest;
+		const stage = run && run.isActive ? stageOfRun( run.stageId ) : null;
+		return run && stage ? { slug: run.version, stage } : null;
+	};
+
+	/**
+	 * /api/marketing
+	 *   GET  /                                   setup, videos, the live run
+	 *   POST /setup        { elevenLabsKey }     save (or with "" remove) the ElevenLabs key on this machine
+	 *   POST /videos       { title, feature, story, audience, length, voice, music }
+	 *   GET  /videos/:slug                       one video, its stages and outputs
+	 *   POST /videos/:slug/script  { text }      save your edits to the script
+	 *   POST /videos/:slug/approve { approved }  approve (or un-approve) the script
+	 *   POST /videos/:slug/stages/:stage { notes }   run a stage
+	 *   POST /videos/:slug/delete
+	 *   GET  /videos/:slug/file?path=…&download=1    a file of the video (Range for video/audio)
+	 * The sessions' own routes are /api/marketing-runs/:id/… (like /api/runs).
+	 */
+	async function routeMarketing( req: http.IncomingMessage, res: http.ServerResponse, method: string, rest: string[], url: URL ): Promise<void> {
+		const marketing = options.marketing;
+
+		if ( ! marketing ) {
+			throw new HttpError( 404, 'Marketing is not available.' );
+		}
+
+		const { store, runs } = marketing;
+
+		try {
+			if ( rest.length === 0 && method === 'GET' ) {
+				store.ensureKit();
+				sendJson( res, 200, { setup: store.setup(), videos: store.list(), run: runs.latest?.isActive ? runs.latestSnapshot() : null } );
+				return;
+			}
+
+			if ( rest.length === 1 && rest[ 0 ] === 'setup' && method === 'POST' ) {
+				const body = await readJson( req );
+				store.saveElevenLabsKey( typeof body.elevenLabsKey === 'string' ? body.elevenLabsKey : '' );
+				sendJson( res, 200, { setup: store.setup() } );
+				return;
+			}
+
+			if ( rest[ 0 ] !== 'videos' ) {
+				throw new HttpError( 404, 'Not found.' );
+			}
+
+			if ( rest.length === 1 && method === 'POST' ) {
+				store.ensureKit();
+				const brief = store.create( await readJson( req ) );
+				sendJson( res, 201, { video: store.detail( brief.slug, activeMarketing() ) } );
+				return;
+			}
+
+			const slug = rest[ 1 ] ?? '';
+			const active = activeMarketing();
+			const busyHere = active?.slug === slug;
+
+			if ( rest.length === 2 && method === 'GET' ) {
+				sendJson( res, 200, { video: store.detail( slug, active ), runs: runs.list( slug ) } );
+				return;
+			}
+
+			if ( rest.length === 3 && rest[ 2 ] === 'file' && method === 'GET' ) {
+				const file = store.resolveFile( slug, url.searchParams.get( 'path' ) ?? '' );
+				sendMedia( req, res, file, url.searchParams.get( 'download' ) === '1' );
+				return;
+			}
+
+			if ( method !== 'POST' ) {
+				throw new HttpError( 404, 'Not found.' );
+			}
+
+			if ( rest.length === 3 && rest[ 2 ] === 'script' ) {
+				if ( busyHere && active?.stage === 'script' ) throw new HttpError( 409, 'Claude is writing this script right now. Edit it when that run ends.' );
+				const body = await readJson( req );
+				if ( typeof body.text !== 'string' ) throw new HttpError( 400, 'The script needs text.' );
+				store.saveScript( slug, body.text );
+				sendJson( res, 200, { video: store.detail( slug, active ) } );
+				return;
+			}
+
+			if ( rest.length === 3 && rest[ 2 ] === 'approve' ) {
+				const body = await readJson( req );
+				store.approve( slug, body.approved !== false );
+				sendJson( res, 200, { video: store.detail( slug, active ) } );
+				return;
+			}
+
+			if ( rest.length === 3 && rest[ 2 ] === 'delete' ) {
+				if ( busyHere ) throw new HttpError( 409, 'A session is working on this video. Stop it first.' );
+				store.remove( slug );
+				sendJson( res, 200, { deleted: slug } );
+				return;
+			}
+
+			if ( rest.length === 4 && rest[ 2 ] === 'stages' && ( STAGE_IDS as readonly string[] ).includes( rest[ 3 ] ) ) {
+				const stage = rest[ 3 ] as MarketingStageId;
+				const body = await readJson( req );
+				const notes = typeof body.notes === 'string' ? body.notes.trim().slice( 0, 4000 ) : '';
+				const state = store.stages( store.brief( slug ), active ).find( ( item ) => item.id === stage )!;
+
+				if ( state.status === 'blocked' ) throw new HttpError( 409, state.reason ?? 'That step can’t run yet.' );
+				if ( state.status === 'skipped' ) throw new HttpError( 409, 'This video has no voiceover. Turn it on in the brief to record one.' );
+
+				const brief = store.brief( slug );
+				const file = store.writeInstructions(
+					slug,
+					stage,
+					stageInstructions( stage, {
+						product: PRODUCT.name,
+						repo: root,
+						home: store.home,
+						folder: store.folder( slug ),
+						brief,
+						notes,
+						again: state.status === 'done',
+					} )
+				);
+				const run = runs.start( runStageId( stage ), slug, marketingPrompt( stage, brief.title, file, notes ), { permissions: 'risky', confirmPhrase: 'confirm' } );
+				sendJson( res, 201, { run: run.snapshot() } );
+				return;
+			}
+
+			throw new HttpError( 404, 'Not found.' );
+		} catch ( error ) {
+			throw asHttpError( error );
+		}
+	}
 
 	/**
 	 * /api/builds
@@ -791,6 +974,11 @@ export function createApp( options: AppOptions ): http.RequestListener {
 			return;
 		}
 
+		if ( resource === 'marketing' ) {
+			await routeMarketing( req, res, method, parts.slice( 2 ), url );
+			return;
+		}
+
 		if ( resource === 'builds' ) {
 			await routeBuilds( req, res, method, parts.slice( 2 ) );
 			return;
@@ -1018,14 +1206,15 @@ export function createApp( options: AppOptions ): http.RequestListener {
 			return;
 		}
 
-		// per-run routes, for release runs (/api/runs/…) and Agent sessions (/api/chat/…)
-		const target = resource === 'chat' ? options.chats : manager;
+		// per-run routes, for release runs (/api/runs/…), Agent sessions (/api/chat/…)
+		// and Marketing sessions (/api/marketing-runs/…)
+		const target = resource === 'chat' ? options.chats : resource === 'marketing-runs' ? options.marketing?.runs : manager;
 
 		if ( ! target ) {
 			throw new HttpError( 404, 'Not found.' );
 		}
 
-		if ( ( resource !== 'runs' && resource !== 'chat' ) || ! parts[ 2 ] ) {
+		if ( ( resource !== 'runs' && resource !== 'chat' && resource !== 'marketing-runs' ) || ! parts[ 2 ] ) {
 			throw new HttpError( 404, 'Not found.' );
 		}
 
@@ -1063,8 +1252,10 @@ export function createApp( options: AppOptions ): http.RequestListener {
 
 			try {
 				const message = typeof body.message === 'string' ? body.message : '';
+				// An Agent chat can switch Chrome on or off; it restarts the same session as the other kind.
+				const stageId = resource === 'chat' && typeof body.chrome === 'boolean' ? ( body.chrome ? 'chat-chrome' : 'chat' ) : undefined;
 
-				sendJson( res, 201, { run: target.resume( runId, message ).snapshot() } );
+				sendJson( res, 201, { run: target.resume( runId, message, { stageId } ).snapshot() } );
 			} catch ( error ) {
 				throw asHttpError( error );
 			}

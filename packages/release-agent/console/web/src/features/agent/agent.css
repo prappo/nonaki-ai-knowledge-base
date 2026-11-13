@@ -646,6 +646,29 @@
 	font-weight: 600;
 }
 
+/* Off is a choice too: make it visible, so a chat without Chrome is never a surprise */
+.chat-pill.is-off {
+	border-style: dashed;
+	color: var(--tertiary);
+}
+
+/* The next message restarts the session with Chrome switched */
+.chat-pill.is-changed {
+	border-style: solid;
+	border-color: var(--blue);
+	color: var(--blue-text);
+	font-weight: 600;
+}
+
+.chat-pill:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.chat-meta-nochrome {
+	color: var(--secondary);
+}
+
 .chat-send {
 	display: grid;
 	flex: none;

@@ -1,0 +1,22 @@
+{
+  "name": "wpsp-fee-recovery-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "voice": "node scripts/voice.mjs",
+    "preview": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts FeeRecovery out/fee-recovery-promo.mp4",
+    "still": "remotion still src/index.ts FeeRecovery"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.543",
+    "@remotion/google-fonts": "4.0.543",
+    "remotion": "4.0.543",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "@types/react": "19.1.8"
+  }
+}

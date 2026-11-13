@@ -1,11 +1,12 @@
 /**
  * Starting the gateway (`release-agent serve`) and its tunnel at login, and
  * restarting them if they stop: a launchd agent on macOS, a systemd user
- * service on Linux. Each gets the PATH of the shell that turned it on, so
+ * service on Linux, a Task Scheduler task at logon on Windows (running a
+ * hidden PowerShell loop that restarts it). Each gets the PATH of the shell that turned it on, so
  * git, gh, node and Claude are found as they are in the terminal.
  */
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { runCommand, type Runner } from "./cloudflared.ts";
@@ -80,6 +81,39 @@ WantedBy=default.target
 `;
 }
 
+/** PowerShell single-quoted string. */
+const ps = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+/**
+ * The loop a Windows logon task runs, hidden: start the program, append its
+ * output to the log, and start it again 10 seconds after it stops. It writes
+ * its PID so `autostart off` can stop it and what it started.
+ */
+export function windowsLoopScript(spec: ServiceSpec, pidFile: string): string {
+  const [program, ...args] = spec.program;
+  const env = Object.entries(spec.env)
+    .map(([k, v]) => `$env:${k} = ${ps(v)}`)
+    .join("\r\n");
+  return [
+    "# Written by release-agent (release-agent autostart on).",
+    "$ErrorActionPreference = 'Continue'",
+    env,
+    `Set-Content -Path ${ps(pidFile)} -Value $PID`,
+    "while ($true) {",
+    `  & ${ps(program)} ${args.map(ps).join(" ")} *>> ${ps(spec.logFile)}`,
+    "  Start-Sleep -Seconds 10",
+    "}",
+    "",
+  ].join("\r\n");
+}
+
+export const windowsTaskName = (name: ServiceName) => `release-agent ${name}`;
+
+/** What Task Scheduler runs at logon: the loop, in a hidden PowerShell window. */
+export function windowsTaskCommand(scriptFile: string): string {
+  return `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "${scriptFile}"`;
+}
+
 export interface Autostart {
   supported: boolean;
   install(spec: ServiceSpec): Promise<void>;
@@ -147,8 +181,56 @@ export function autostartFor(platform = process.platform, run: Runner = runComma
     };
   }
 
+  if (platform === "win32") {
+    const dir = path.join(home, ".release-agent", "autostart");
+    const file = (name: ServiceName) => path.join(dir, `${name}.ps1`);
+    const pidFile = (name: ServiceName) => path.join(dir, `${name}.pid`);
+    const stop = async (name: ServiceName) => {
+      await run("schtasks", ["/End", "/TN", windowsTaskName(name)]);
+      // Ending the task stops PowerShell, not always what it started: end the whole tree.
+      try {
+        const pid = readFileSync(pidFile(name), "utf8").trim();
+        if (/^\d+$/.test(pid)) await run("taskkill", ["/F", "/T", "/PID", pid]);
+      } catch {
+        /* not running */
+      }
+      rmSync(pidFile(name), { force: true });
+    };
+    return {
+      supported: true,
+      file,
+      async install(spec) {
+        mkdirSync(dir, { recursive: true });
+        mkdirSync(path.dirname(spec.logFile), { recursive: true });
+        await stop(spec.name);
+        writeFileSync(file(spec.name), windowsLoopScript(spec, pidFile(spec.name)));
+        const created = await run("schtasks", ["/Create", "/F", "/SC", "ONLOGON", "/RL", "LIMITED", "/TN", windowsTaskName(spec.name), "/TR", windowsTaskCommand(file(spec.name))]);
+        if (created.code !== 0) throw new Error(`Task Scheduler couldn't add "${windowsTaskName(spec.name)}": ${created.stderr.trim() || created.stdout.trim()}`);
+        const started = await run("schtasks", ["/Run", "/TN", windowsTaskName(spec.name)]);
+        if (started.code !== 0) throw new Error(`Task Scheduler couldn't start "${windowsTaskName(spec.name)}": ${started.stderr.trim() || started.stdout.trim()}`);
+      },
+      async uninstall(name) {
+        const had = existsSync(file(name));
+        await stop(name);
+        await run("schtasks", ["/Delete", "/F", "/TN", windowsTaskName(name)]);
+        rmSync(file(name), { force: true });
+        return had;
+      },
+      async status(name) {
+        const res = await run("schtasks", ["/Query", "/TN", windowsTaskName(name), "/FO", "LIST"]);
+        let pid: number | null = null;
+        try {
+          pid = Number(readFileSync(pidFile(name), "utf8").trim()) || null;
+        } catch {
+          /* none */
+        }
+        return { installed: res.code === 0, running: res.code === 0 && /Status:\s+Running/i.test(res.stdout), pid };
+      },
+    };
+  }
+
   const unsupported = async () => {
-    throw new Error("Starting at login isn't built in on this system yet. Run `release-agent serve` and `release-agent tunnel run` yourself (e.g. from Task Scheduler).");
+    throw new Error("Starting at login isn't built in on this system. Run `release-agent serve` and `release-agent tunnel run` yourself.");
   };
   return {
     supported: false,

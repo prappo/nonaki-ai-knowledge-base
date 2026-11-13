@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { checkHostname, defaultTunnelName, setupTunnel, tunnelConfigYaml, type Runner } from "../src/tunnel/cloudflared.ts";
-import { autostartFor, launchdPlist, systemdUnit, type ServiceSpec } from "../src/tunnel/autostart.ts";
+import { autostartFor, launchdPlist, systemdUnit, windowsLoopScript, windowsTaskCommand, type ServiceSpec } from "../src/tunnel/autostart.ts";
 
 const base = mkdtempSync(path.join(tmpdir(), "tunnel-"));
 afterAll(() => rmSync(base, { recursive: true, force: true }));
@@ -163,8 +163,38 @@ describe("autostart", () => {
     expect(calls.at(-1)).toEqual(["launchctl", "bootout", "gui/501/dev.release-agent.serve"]);
   });
 
+  it("writes a hidden, restarting PowerShell loop for Windows, quoting paths", () => {
+    const script = windowsLoopScript({ ...spec, program: ["C:\\Program Files\\nodejs\\node.exe", "C:\\Users\\O'Neil\\agent.mjs", "serve"], logFile: "C:\\logs\\serve.log" }, "C:\\x\\serve.pid");
+    expect(script).toContain("& 'C:\\Program Files\\nodejs\\node.exe' 'C:\\Users\\O''Neil\\agent.mjs' 'serve' *>> 'C:\\logs\\serve.log'");
+    expect(script).toContain("$env:PATH = '/opt/homebrew/bin:/usr/bin'");
+    expect(script).toContain("while ($true) {");
+    expect(script).toContain("Start-Sleep -Seconds 10");
+    expect(windowsTaskCommand("C:\\a b\\serve.ps1")).toBe('powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\\a b\\serve.ps1"');
+  });
+
+  it("adds, starts, reports and removes the Windows logon task", async () => {
+    const home = mkdtempSync(path.join(base, "win-"));
+    const calls: string[][] = [];
+    const run: Runner = async (cmd, args) => {
+      calls.push([cmd, ...args]);
+      if (args[0] === "/Query") return { code: 0, stdout: "TaskName: \\release-agent serve\nStatus:   Running\n", stderr: "" };
+      return { code: 0, stdout: "", stderr: "" };
+    };
+    const auto = autostartFor("win32", run, home);
+    await auto.install({ ...spec, logFile: path.join(home, "logs", "serve.log") });
+    expect(existsSync(auto.file("serve"))).toBe(true);
+    expect(calls).toContainEqual(["schtasks", "/Create", "/F", "/SC", "ONLOGON", "/RL", "LIMITED", "/TN", "release-agent serve", "/TR", windowsTaskCommand(auto.file("serve"))]);
+    expect(calls).toContainEqual(["schtasks", "/Run", "/TN", "release-agent serve"]);
+    expect((await auto.status("serve")).running).toBe(true);
+    writeFileSync(path.join(home, ".release-agent", "autostart", "serve.pid"), "4242");
+    expect(await auto.uninstall("serve")).toBe(true);
+    expect(calls).toContainEqual(["taskkill", "/F", "/T", "/PID", "4242"]);
+    expect(calls.at(-1)).toEqual(["schtasks", "/Delete", "/F", "/TN", "release-agent serve"]);
+    expect(existsSync(auto.file("serve"))).toBe(false);
+  });
+
   it("says so where it isn't built in", async () => {
-    const auto = autostartFor("win32");
+    const auto = autostartFor("freebsd" as NodeJS.Platform);
     expect(auto.supported).toBe(false);
     await expect(auto.install(spec)).rejects.toThrow(/isn't built in/);
   });

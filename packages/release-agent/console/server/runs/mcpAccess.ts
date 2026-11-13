@@ -43,7 +43,8 @@ export function sessionProcessEnv( env: NodeJS.ProcessEnv ): Record<string, stri
 	const clean: Record<string, string> = {};
 
 	for ( const [ key, value ] of Object.entries( env ) ) {
-		if ( value !== undefined && key !== TOKEN_ENV && key !== SERVER_ENV && key !== CHROME_ENV ) {
+		// the ElevenLabs key goes only to Marketing's voiceover session, which adds it itself
+		if ( value !== undefined && key !== TOKEN_ENV && key !== SERVER_ENV && key !== CHROME_ENV && key !== 'ELEVENLABS_API_KEY' ) {
 			clean[ key ] = value;
 		}
 	}

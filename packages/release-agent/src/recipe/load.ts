@@ -294,6 +294,12 @@ export function validateRecipe(input: unknown): Recipe {
       v.str(s.summary, `${sat}.summary`);
       v.strArray(s.gates, `${sat}.gates`, true);
       v.strArray(s.requires, `${sat}.requires`, true);
+      if (v.strArray(s.forbid, `${sat}.forbid`, true) && Array.isArray(s.forbid)) {
+        const extraIds = isObj(r.risk) && Array.isArray(r.risk.extra) ? r.risk.extra.map((e: unknown) => (isObj(e) ? e.rule : null)) : [];
+        s.forbid.forEach((id: string, j: number) => {
+          if (!BUILTIN_RISK_RULES.includes(id) && !extraIds.includes(id)) v.fail(`${sat}.forbid[${j}]`, `"${id}" is not a risk rule (${BUILTIN_RISK_RULES.join(", ")} or a risk.extra rule)`);
+        });
+      }
       if (s.irreversible !== undefined && typeof s.irreversible !== "boolean") v.fail(`${sat}.irreversible`, "must be true or false");
       if (s.doneWhen !== undefined) v.check(s.doneWhen, `${sat}.doneWhen`);
       if (s.listMissing && s.doneWhen === undefined) v.fail(`${sat}.listMissing`, "needs doneWhen");

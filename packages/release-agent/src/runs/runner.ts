@@ -31,7 +31,7 @@ import type {
 	SDKMessage,
 	SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
-import { BROWSER_SCRIPT_TOOL, CHECKED_TOOLS, createRiskAssessor, describeToolCall, type RiskAssessor } from './risk.ts';
+import { BROWSER_ACTION_MATCHER, BROWSER_SCRIPT_TOOL, CHECKED_TOOLS, createRiskAssessor, describeToolCall, type RiskAssessor } from './risk.ts';
 
 /**
  * The risk rules approvals use: the built-in ones until the agent sets the
@@ -236,26 +236,51 @@ function toQuestions( input: Record<string, unknown> ): Question[] {
  * PreToolUse hook: send risky tool calls (see risk.ts) and AskUserQuestion to
  * the permission prompt (our canUseTool), no matter what the allowlist says.
  */
-export async function forceAskHook( input: HookInput ): Promise<HookJSONOutput> {
-	if ( input.hook_event_name !== 'PreToolUse' ) {
-		return {};
-	}
+export function forceAskHook( input: HookInput ): Promise<HookJSONOutput> {
+	return stageHook( '' )( input );
+}
 
-	const ask = ( reason: string ): HookJSONOutput => ( {
-		hookSpecificOutput: {
-			hookEventName: 'PreToolUse',
-			permissionDecision: 'ask',
-			permissionDecisionReason: reason,
-		},
-	} );
+/** Why a forbidden tool call was refused: told to Claude as the tool's result. */
+export function forbiddenMessage( reason: string ): string {
+	return `Refused by the release console: this stage never does this (${ reason }). Do not try another way. Stop and tell the user what you were about to do; they do it by hand if they want it.`;
+}
 
-	if ( input.tool_name === 'AskUserQuestion' ) {
-		return ask( 'Answered in the Release Console.' );
-	}
+/**
+ * The PreToolUse hook for one stage: as forceAskHook, but a risk the stage's
+ * recipe `forbid` list names is denied outright, so no approval card appears.
+ */
+export function stageHook( stageId: string ) {
+	return async ( input: HookInput ): Promise<HookJSONOutput> => {
+		if ( input.hook_event_name !== 'PreToolUse' ) {
+			return {};
+		}
 
-	const risk = assessToolRisk( input.tool_name, input.tool_input );
+		const ask = ( reason: string ): HookJSONOutput => ( {
+			hookSpecificOutput: {
+				hookEventName: 'PreToolUse',
+				permissionDecision: 'ask',
+				permissionDecisionReason: reason,
+			},
+		} );
 
-	return risk ? ask( risk.reason ) : {};
+		if ( input.tool_name === 'AskUserQuestion' ) {
+			return ask( 'Answered in the Release Console.' );
+		}
+
+		const risk = assessToolRisk( input.tool_name, input.tool_input );
+
+		if ( risk && stageId && activeRisk.isForbidden( stageId, risk.rule ) ) {
+			return {
+				hookSpecificOutput: {
+					hookEventName: 'PreToolUse',
+					permissionDecision: 'deny',
+					permissionDecisionReason: forbiddenMessage( risk.reason ),
+				},
+			};
+		}
+
+		return risk ? ask( risk.reason ) : {};
+	};
 }
 
 export interface RunOptions {
@@ -366,7 +391,15 @@ export class Run extends EventEmitter {
 		this.input.push( this.prompt );
 
 		const hooks: Partial<Record<'PreToolUse', HookCallbackMatcher[]>> = {
-			PreToolUse: [ { matcher: CHECKED_TOOLS, hooks: [ forceAskHook ] } ],
+			PreToolUse: [
+				{ matcher: CHECKED_TOOLS, hooks: [ stageHook( this.stageId ) ] },
+				// A stage that forbids rules also checks Chrome's clicks here, so a
+				// send click is refused even if the allowlist covers Chrome's tools.
+				// (Elsewhere those clicks reach canUseTool, which checks them too.)
+				...( activeRisk.forbiddenRules( this.stageId ).length
+					? [ { matcher: BROWSER_ACTION_MATCHER, hooks: [ stageHook( this.stageId ) ] } ]
+					: [] ),
+			],
 		};
 
 		try {
@@ -509,6 +542,11 @@ export class Run extends EventEmitter {
 		}
 
 		const risk = assessToolRisk( toolName, input );
+
+		// Never reaches an approval card: the stage must not do this at all.
+		if ( risk && activeRisk.isForbidden( this.stageId, risk.rule ) ) {
+			return { behavior: 'deny', message: forbiddenMessage( risk.reason ) };
+		}
 
 		if ( ! risk && this.options.permissions === 'ask' ) {
 			// Like the terminal: anything the allowlist doesn't cover asks first.
@@ -889,8 +927,21 @@ export class RunManager {
 		return ids.size;
 	}
 
-	/** Continues an ended run's Claude session with a new message. */
-	resume( id: string, message: string ): Run {
+	/**
+	 * Continues an ended run's Claude session with a new message.
+	 *
+	 * `stageId` restarts the session as another stage (an Agent chat switching
+	 * between "chat" and "chat-chrome"). A session's MCP servers are fixed when
+	 * it starts, so this is the only way to add or drop Chrome: a session that
+	 * is waiting for a reply is finished first and picked up again as the new stage.
+	 */
+	resume( id: string, message: string, { stageId }: { stageId?: string } = {} ): Run {
+		const live = this.get( id );
+
+		if ( stageId && live && live.stageId !== stageId && live.status === 'awaiting_reply' && live.snapshot().gates.length === 0 ) {
+			live.finish();
+		}
+
 		const previous = this.snapshot( id );
 
 		if ( ! previous ) {
@@ -908,7 +959,7 @@ export class RunManager {
 		const text = message.trim() || 'Continue where you left off.';
 
 		return this.launch( {
-			stageId: previous.stageId,
+			stageId: stageId ?? previous.stageId,
 			version: previous.version,
 			prompt: text,
 			resume: { run: previous },

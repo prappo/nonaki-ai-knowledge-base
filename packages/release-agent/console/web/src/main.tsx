@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App.tsx';
 import { AgentApp } from './features/agent/AgentApp.tsx';
+import { MarketingApp } from './features/marketing/MarketingApp.tsx';
 import './styles/app.css';
 import './styles/nonaki-theme.css';
 import { connectRemote, REMOTE } from './lib/remote.ts';
@@ -14,7 +15,8 @@ if ( theme === 'light' || theme === 'dark' ) {
 	document.documentElement.dataset.theme = theme;
 }
 
-// ?view=agent: the Agent page (free-prompt Claude Code sessions) instead of the release console
+// ?view=agent: the Agent page (free-prompt Claude Code sessions) instead of the release console;
+// ?view=marketing: the Marketing page (promo videos made by Claude Code sessions)
 const view = new URLSearchParams( window.location.search ).get( 'view' );
 
 const root = createRoot( document.getElementById( 'root' )! );
@@ -22,7 +24,7 @@ const root = createRoot( document.getElementById( 'root' )! );
 function render() {
 	root.render(
 		<StrictMode>
-			{ view === 'agent' ? <AgentApp /> : <App /> }
+			{ view === 'agent' ? <AgentApp /> : view === 'marketing' ? <MarketingApp /> : <App /> }
 		</StrictMode>
 	);
 }

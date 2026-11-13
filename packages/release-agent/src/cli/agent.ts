@@ -280,6 +280,25 @@ async function serve() {
         project: { id: repo.id, name, path: checked.path, recipe: checked.recipe, recipeTitle: checked.recipeTitle, githubRepo: checked.githubRepo, branch: checked.branch },
       };
     },
+    setRecipe: async (id, body, who) => {
+      const repo = config.repos.find((r) => r.id === id);
+      if (!repo) throw new ProjectError(404, "This machine doesn't serve that project.");
+      const checked = await checkProject({ path: repo.path, recipe: body.recipe }, config.allowedRoots ?? []);
+      // Switching restarts its console, which would cut off a run.
+      const port = agent.gatewayProjects().find((p) => p.id === id)?.port;
+      if (port) {
+        const busy = (await fetch(`http://127.0.0.1:${port}/api/live`).then((r) => r.json(), () => null)) as { run?: { active?: boolean } | null; chat?: { active?: boolean } | null } | null;
+        if (busy?.run?.active || busy?.chat?.active) throw new ProjectError(409, "A run or agent session is going in this project. Change the recipe when it's done.");
+      }
+      agent.removeRepo(id);
+      const updated = { ...repo, recipe: checked.recipeFile };
+      await agent.addRepo(updated);
+      config.repos = config.repos.map((r) => (r.id === id ? updated : r));
+      writeConfig(config);
+      log(`${who} switched "${repo.name}" to the recipe ${checked.recipe} from the web app`);
+      live.poke();
+      return { project: { id, recipe: checked.recipe, recipeTitle: checked.recipeTitle, stages: checked.stages.length } };
+    },
     remove: async (id, who) => {
       const repo = config.repos.find((r) => r.id === id);
       if (!repo) return false;

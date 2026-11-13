@@ -189,6 +189,8 @@ function Composer( props: {
 	onMode: ( mode: Mode ) => void;
 	chrome: boolean;
 	onChrome: ( value: boolean ) => void;
+	/** In an open chat: switch Chrome for the next message (restarts the session with it on or off). */
+	chromeSwitch?: { on: boolean; changed: boolean; disabled: boolean; onToggle: () => void } | null;
 	onSend: ( text: string ) => Promise<boolean>;
 	onStop: () => void;
 	autoFocus?: boolean;
@@ -265,15 +267,39 @@ function Composer( props: {
 							</div>
 							<button
 								type="button"
-								className={ `chat-pill${ props.chrome ? ' is-on' : '' }` }
+								className={ `chat-pill${ props.chrome ? ' is-on' : ' is-off' }` }
 								onClick={ () => props.onChrome( ! props.chrome ) }
-								title="Let Claude use your Chrome, like claude --chrome"
+								aria-pressed={ props.chrome }
+								title={ props.chrome ? 'Claude can use your Chrome, like claude --chrome. Click to start without it.' : 'Claude can’t use Chrome in this chat. Click to turn it on.' }
 							>
-								<Globe size={ 13 } /> Chrome
+								<Globe size={ 13 } /> { props.chrome ? 'Chrome' : 'No Chrome' }
 							</button>
 						</>
 					) : (
-						<span className="chat-composer-hint">{ props.disabledReason ?? 'Enter to send · Shift+Enter for a new line' }</span>
+						<>
+							{ props.chromeSwitch && (
+								<button
+									type="button"
+									className={ `chat-pill${ props.chromeSwitch.on ? ' is-on' : ' is-off' }${ props.chromeSwitch.changed ? ' is-changed' : '' }` }
+									onClick={ props.chromeSwitch.onToggle }
+									disabled={ props.chromeSwitch.disabled }
+									aria-pressed={ props.chromeSwitch.on }
+									title={
+										props.chromeSwitch.disabled
+											? 'Wait for Claude to finish this turn to switch Chrome.'
+											: props.chromeSwitch.changed
+												? `Your next message restarts this session ${ props.chromeSwitch.on ? 'with' : 'without' } Chrome. Click to undo.`
+												: props.chromeSwitch.on
+													? 'Claude can use your Chrome in this chat. Click to drop it for the next message.'
+													: 'Claude can’t use Chrome in this chat. Click to turn it on for the next message.'
+									}
+								>
+									<Globe size={ 13 } />
+									{ props.chromeSwitch.changed ? ( props.chromeSwitch.on ? 'Chrome on next message' : 'Chrome off next message' ) : props.chromeSwitch.on ? 'Chrome' : 'No Chrome' }
+								</button>
+							) }
+							<span className="chat-composer-hint">{ props.disabledReason ?? 'Enter to send · Shift+Enter for a new line' }</span>
+						</>
 					) }
 					<span className="chat-spacer" />
 					{ props.working ? (
@@ -352,6 +378,12 @@ export function AgentApp() {
 	}, [ shown, runs ] );
 	const blocks = useMemo( () => ( shown ? toBlocks( shown.items, firstPrompt ) : [] ), [ shown, firstPrompt ] );
 
+	// Chrome for the open chat's next message: starts as the session has it, reset when another chat opens
+	const shownChrome = shown?.stageId === 'chat-chrome';
+	const chromeKey = shown ? `${ shown.id }:${ shown.stageId }` : '';
+	const [ nextChrome, setNextChrome ] = useState<{ key: string; on: boolean }>( { key: '', on: false } );
+	const wantChrome = nextChrome.key === chromeKey ? nextChrome.on : shownChrome;
+
 	// stick to the bottom while new messages arrive, unless the user scrolled up
 	useLayoutEffect( () => {
 		const element = scroller.current;
@@ -413,6 +445,16 @@ export function AgentApp() {
 			if ( ! shown ) {
 				await freeSlot();
 				const { run } = await api.startChat( text, mode, chrome );
+				choose( run.id );
+			} else if ( wantChrome !== shownChrome ) {
+				// The session's MCP servers are fixed when it starts: pick it back up with Chrome switched.
+				// A session waiting for a reply is finished first, on the server.
+				if ( isActive( shown ) && ! ( shown.status === 'awaiting_reply' && shown.gates.length === 0 ) ) {
+					throw new Error( 'Wait for Claude to finish this turn, then switch Chrome.' );
+				}
+				if ( ! shown.sessionId ) throw new Error( 'This chat ended before Claude started, so it can’t continue. Start a new chat.' );
+				if ( ! isActive( shown ) ) await freeSlot();
+				const { run } = await api.resume( shown.id, text, CHAT, wantChrome );
 				choose( run.id );
 			} else if ( shown.status === 'awaiting_reply' && shown.gates.length === 0 ) {
 				await api.reply( shown.id, text, CHAT );
@@ -612,7 +654,13 @@ export function AgentApp() {
 									<div className="chat-session-meta">
 										{ shown.permissions === 'ask' ? <ShieldCheck size={ 12 } /> : <Zap size={ 12 } /> }
 										{ shown.permissions === 'ask' ? 'Ask before acting' : 'Auto' }
-										{ shown.stageId === 'chat-chrome' && ' · Chrome' }
+										{ shown.stageId === 'chat-chrome' ? (
+											' · Chrome'
+										) : (
+											<span className="chat-meta-nochrome" title="This session can’t use your browser. Switch Chrome on below to continue it with Chrome.">
+												{ ' · No Chrome' }
+											</span>
+										) }
 										{ shown.costUsd !== null && ` · ${ formatCost( shown.costUsd ) }` }
 									</div>
 								) }
@@ -668,6 +716,16 @@ export function AgentApp() {
 								onMode={ chooseMode }
 								chrome={ chrome }
 								onChrome={ setChrome }
+								chromeSwitch={
+									shown
+										? {
+												on: wantChrome,
+												changed: wantChrome !== shownChrome,
+												disabled: working || busy,
+												onToggle: () => setNextChrome( { key: chromeKey, on: ! wantChrome } ),
+										  }
+										: null
+								}
 								onSend={ send }
 								onStop={ () => shown && void act( () => api.stop( shown.id, CHAT ) ) }
 							/>

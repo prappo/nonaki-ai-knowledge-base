@@ -173,6 +173,48 @@ export function rawUrl( path: string ): string {
 
 /** Release runs; Agent sessions use CHAT with the same per-run routes. */
 export const RUNS = '/api/runs';
+
+/** Marketing sessions: the same per-run routes (events, gates, reply, stop, resume). */
+export const MARKETING_RUNS = '/api/marketing-runs';
+const MARKETING = '/api/marketing';
+
+export type {
+	MarketingSetup,
+	MarketingStage,
+	MarketingStageId,
+	VideoBrief,
+	VideoDetail,
+	VideoFile,
+	VideoSummary,
+} from '../../../server/marketing/marketing.ts';
+import type { MarketingSetup, MarketingStageId, VideoDetail, VideoSummary } from '../../../server/marketing/marketing.ts';
+
+export interface NewVideo {
+	title: string;
+	feature: string;
+	story: string;
+	audience: string;
+	length: number;
+	voice: boolean;
+	music: string;
+}
+
+export const marketingApi = {
+	overview: () => request<{ setup: MarketingSetup; videos: VideoSummary[]; run: RunSnapshot | null }>( MARKETING ),
+	saveKey: ( elevenLabsKey: string ) => post<{ setup: MarketingSetup }>( `${ MARKETING }/setup`, { elevenLabsKey } ),
+	create: ( video: NewVideo ) => post<{ video: VideoDetail }>( `${ MARKETING }/videos`, video ),
+	video: ( slug: string ) => request<{ video: VideoDetail; runs: RunSummary[] }>( `${ MARKETING }/videos/${ encodeURIComponent( slug ) }` ),
+	saveScript: ( slug: string, text: string ) => post<{ video: VideoDetail }>( `${ MARKETING }/videos/${ encodeURIComponent( slug ) }/script`, { text } ),
+	approve: ( slug: string, approved: boolean ) => post<{ video: VideoDetail }>( `${ MARKETING }/videos/${ encodeURIComponent( slug ) }/approve`, { approved } ),
+	runStage: ( slug: string, stage: MarketingStageId, notes: string ) =>
+		post<{ run: RunSnapshot }>( `${ MARKETING }/videos/${ encodeURIComponent( slug ) }/stages/${ stage }`, { notes } ),
+	remove: ( slug: string ) => post<{ deleted: string }>( `${ MARKETING }/videos/${ encodeURIComponent( slug ) }/delete` ),
+	/** A video's file, for <video>, <audio> and <img>; `modified` busts the cache when it changes. */
+	fileUrl: ( slug: string, path: string, { download = false, modified = 0 }: { download?: boolean; modified?: number } = {} ) =>
+		linkUrl(
+			`${ MARKETING }/videos/${ encodeURIComponent( slug ) }/file?${ query( { path, ...( download ? { download: '1' } : {} ), ...( modified ? { v: String( Math.round( modified ) ) } : {} ) } ) }`
+		),
+};
 export const CHAT = '/api/chat';
 
 export const api = {
@@ -181,8 +223,9 @@ export const api = {
 	run: ( runId: string, base = RUNS ) => request<{ run: RunSnapshot }>( `${ base }/${ runId }` ),
 	startRun: ( stageId: string, version: string, confirm?: string, buildId?: string ) =>
 		post<{ run: RunSnapshot }>( '/api/runs', { stageId, version, confirm, buildId } ),
-	resume: ( runId: string, message: string, base = RUNS ) =>
-		post<{ run: RunSnapshot }>( `${ base }/${ runId }/resume`, { message } ),
+	/** `chrome` (Agent chats only) restarts the session with Claude in Chrome switched on or off. */
+	resume: ( runId: string, message: string, base = RUNS, chrome?: boolean ) =>
+		post<{ run: RunSnapshot }>( `${ base }/${ runId }/resume`, chrome === undefined ? { message } : { message, chrome } ),
 	answerQuestion: ( runId: string, gateId: string, answers: Record<string, string>, base = RUNS ) =>
 		post( `${ base }/${ runId }/gates/${ gateId }`, { type: 'question', answers } ),
 	answerApproval: ( runId: string, gateId: string, allow: boolean, message?: string, confirm?: string, base = RUNS ) =>
