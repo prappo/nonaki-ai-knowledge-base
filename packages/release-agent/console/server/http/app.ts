@@ -42,6 +42,8 @@ import { findStage, localBuildChoices, resolveStageProbes, STAGE_GROUPS, stagePr
 import { libraryRoot, parseVersion, releaseBranches, VERSION_HINT, type ReleaseVersion } from '../release/version.ts';
 import { docDiff, listUserDocs } from '../release/docs.ts';
 import { recipe } from '../release/recipe.ts';
+import { adoptResumedReviewer, reviewContext, startStageRun } from '../release/contentReview.ts';
+import { ContentReviewError, dismissFinding, fixPrompt, reviewState, saveFixedChecks, undismissFinding } from '../../../src/recipe/contentReview.ts';
 
 const execFileAsync = promisify( execFile );
 
@@ -339,7 +341,7 @@ function asHttpError( error: unknown, status = 409 ): HttpError {
 		return error;
 	}
 
-	if ( error instanceof FileAccessError ) {
+	if ( error instanceof FileAccessError || error instanceof ContentReviewError ) {
 		return new HttpError( error.status, error.message );
 	}
 
@@ -1083,6 +1085,65 @@ export function createApp( options: AppOptions ): http.RequestListener {
 			return;
 		}
 
+		// Content review (the recipe's contentReview): its findings, and what can be done with them.
+		// GET /api/content-review?version= · POST /api/content-review/{checks,dismiss,undismiss,fix} { version, … }
+		if ( resource === 'content-review' ) {
+			if ( ! recipe.contentReview ) {
+				throw new HttpError( 404, 'This product has no content review.' );
+			}
+
+			if ( method === 'GET' && parts.length === 2 ) {
+				try {
+					sendJson( res, 200, { review: reviewState( reviewContext( root, requireVersion( url.searchParams.get( 'version' ) ) ) ) } );
+				} catch ( error ) {
+					throw asHttpError( error, 400 );
+				}
+				return;
+			}
+
+			if ( method === 'POST' && parts.length === 3 ) {
+				const body = await readJson( req );
+				const version = requireVersion( typeof body.version === 'string' ? body.version : null );
+				const ctx = reviewContext( root, version );
+				const id = typeof body.id === 'string' ? body.id : '';
+
+				try {
+					if ( parts[ 2 ] === 'checks' ) {
+						// the fixed checks alone: quick, free, and fine while the reviewer is running
+						saveFixedChecks( ctx ).links.catch( ( error ) => console.error( 'content review: link checks failed', error ) );
+						sendJson( res, 200, { review: reviewState( ctx ) } );
+						return;
+					}
+
+					if ( parts[ 2 ] === 'dismiss' ) {
+						sendJson( res, 200, { review: dismissFinding( ctx, id, typeof body.reason === 'string' ? body.reason : '' ) } );
+						return;
+					}
+
+					if ( parts[ 2 ] === 'undismiss' ) {
+						sendJson( res, 200, { review: undismissFinding( ctx, id ) } );
+						return;
+					}
+
+					if ( parts[ 2 ] === 'fix' ) {
+						const fixStage = recipe.contentReview.fixStage;
+						const stage = fixStage ? findStage( fixStage ) : undefined;
+
+						if ( ! stage ) {
+							throw new HttpError( 404, 'The recipe names no stage to fix the content with.' );
+						}
+
+						sendJson( res, 201, { run: manager.start( stage.id, version.version, fixPrompt( ctx ) ).snapshot() } );
+						return;
+					}
+				} catch ( error ) {
+					throw asHttpError( error );
+				}
+			}
+
+			throw new HttpError( 404, 'Not found.' );
+		}
+
 		// GET /api/runs?version=4.17.5 — run history
 		if ( method === 'GET' && parts.length === 2 && resource === 'runs' ) {
 			const rawVersion = url.searchParams.get( 'version' );
@@ -1136,7 +1197,7 @@ export function createApp( options: AppOptions ): http.RequestListener {
 			}
 
 			try {
-				sendJson( res, 201, { run: manager.start( stage.id, version.version, prompt ).snapshot() } );
+				sendJson( res, 201, { run: startStageRun( manager, stage.id, root, version, prompt ).snapshot() } );
 			} catch ( error ) {
 				throw asHttpError( error );
 			}
@@ -1255,7 +1316,13 @@ export function createApp( options: AppOptions ): http.RequestListener {
 				// An Agent chat can switch Chrome on or off; it restarts the same session as the other kind.
 				const stageId = resource === 'chat' && typeof body.chrome === 'boolean' ? ( body.chrome ? 'chat-chrome' : 'chat' ) : undefined;
 
-				sendJson( res, 201, { run: target.resume( runId, message, { stageId } ).snapshot() } );
+				const resumed = target.resume( runId, message, { stageId } );
+
+				if ( target === manager ) {
+					adoptResumedReviewer( resumed, root );
+				}
+
+				sendJson( res, 201, { run: resumed.snapshot() } );
 			} catch ( error ) {
 				throw asHttpError( error );
 			}

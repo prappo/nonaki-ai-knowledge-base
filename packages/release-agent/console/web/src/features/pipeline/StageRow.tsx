@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, ExternalLink, Eye, Globe, ListOrdered, Play, ShieldAlert } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Badge } from '../../components/Badge.tsx';
 import { CopyButton } from '../../components/CopyButton.tsx';
 import { ProgressIcon, StageIcon, type ProgressState } from '../../components/icons.tsx';
@@ -127,6 +127,7 @@ export function StageRow( {
 	onRunAll,
 	onReview,
 	onShowRun,
+	children,
 }: {
 	stage: StageState;
 	index: number;
@@ -146,6 +147,8 @@ export function StageRow( {
 	onRunAll: ( skipDone: boolean ) => Promise<boolean>;
 	onReview: ( review: StageReview ) => void;
 	onShowRun: ( id: string ) => void;
+	/** More for the expanded card (the content review's findings). */
+	children?: ReactNode;
 } ) {
 	const [ confirming, setConfirming ] = useState( false );
 	// Asked "run this again?" for a stage a remote already shows as done.
@@ -157,7 +160,8 @@ export function StageRow( {
 	// Local build picked, but there is none to run against.
 	const noLocalBuild = stage.localBuild && source.kind === 'local' && ! localBuild;
 	const prompt = localBuild?.prompt ?? stage.prompt;
-	const canReview = stage.review && ( stage.status === 'done' || ! stage.tracked );
+	// the content review shows its findings on the card itself
+	const canReview = stage.review && stage.review.type !== 'contentReview' && ( stage.status === 'done' || ! stage.tracked );
 	const terminalCommand = `claude${ stage.browser ? ' --chrome' : '' } "${ prompt }"`;
 	const failing = warnings.some( ( item ) => item.status === 'fail' );
 	const result = stageResult( stage, lastRun );
@@ -232,10 +236,17 @@ export function StageRow( {
 			{ expanded && (
 				<div className="stage-details">
 					<p className="stage-summary">{ stage.summary }</p>
-					<div className="stage-command">
-						<code>{ prompt }</code>
-						<CopyButton text={ terminalCommand } label="Copy for terminal" />
-					</div>
+					{ stage.contentReview ? (
+						<p className="note">
+							Runs in the Release Console, not a terminal: the fixed checks first, then a reviewer session that can only read (no edits, commands, MCP
+							servers or Chrome).
+						</p>
+					) : (
+						<div className="stage-command">
+							<code>{ prompt }</code>
+							<CopyButton text={ terminalCommand } label="Copy for terminal" />
+						</div>
+					) }
 
 					{ stage.localBuild && <BuildSource stage={ stage } version={ version } value={ source } onChange={ setSource } /> }
 
@@ -406,6 +417,8 @@ export function StageRow( {
 							</button>
 						) }
 					</div>
+
+					{ children }
 
 					{ planning && ! disabledReason && (
 						<RunAllPreview

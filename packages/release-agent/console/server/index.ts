@@ -23,6 +23,7 @@ import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
 import { createRiskAssessor } from '../../src/runs/risk.ts';
 import { BuildManager } from './builds/builds.ts';
 import { createApp } from './http/app.ts';
+import { isReviewStage, reviewerSessionOptions } from './release/contentReview.ts';
 import { CONFIG_FILE, sessionEnv } from './release/config.ts';
 import { recipe, ROOT as root } from './release/recipe.ts';
 import { CiBuilds } from './release/ciBuilds.ts';
@@ -48,10 +49,15 @@ const store = new FileRunStore( runsDir );
 // Every session gets all the MCP servers (Claude Code's own, the repo's
 // .mcp.json, Claude in Chrome and the control server's) and the settings' env vars.
 const mcpAccess = mcpAccessFromEnv( process.env );
-const sessionOptions = (): Partial<Options> => ( {
-	env: { ...sessionProcessEnv( process.env ), ...sessionEnv( root ) },
-	...sessionMcpOptions( mcpAccess ),
-} );
+const sessionOptions = ( stageId: string ): Partial<Options> => {
+	const base: Partial<Options> = {
+		env: { ...sessionProcessEnv( process.env ), ...sessionEnv( root ) },
+		...sessionMcpOptions( mcpAccess ),
+	};
+
+	// the content reviewer only reads: no edits, commands, MCP servers or Chrome
+	return isReviewStage( stageId ) ? reviewerSessionOptions( base ) : base;
+};
 const manager = new RunManager( root, queryFn, sessionOptions, store );
 const sequencer = new Sequencer( { manager, contextFor: ( version ) => ( { root, version } ) } );
 

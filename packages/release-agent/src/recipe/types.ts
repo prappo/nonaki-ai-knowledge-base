@@ -42,6 +42,12 @@ export type Check =
   | { fileMatches: Template; regex: Template; flags?: string }
   /** A local git tag, read from `.git` (loose or packed). `repo` defaults to the repo root. */
   | { gitTag: Template; repo?: Template }
+  /**
+   * The recipe's `contentReview` passed for this version: its fixed checks and
+   * its reviewer both ran on the files as they are now, no blocker was found,
+   * and every warning was dismissed with a reason.
+   */
+  | { contentReview: "passed" }
   | { all: Check[] }
   | { any: Check[] }
   | { not: Check };
@@ -58,7 +64,9 @@ export type Review =
   | { type: "file"; path: Template; label: string }
   | { type: "files"; label: string }
   | { type: "docs"; label: string }
-  | { type: "changes"; label: string };
+  | { type: "changes"; label: string }
+  /** The findings of the recipe's `contentReview`, shown on the stage's card. */
+  | { type: "contentReview"; label: string };
 
 /**
  * A stage that can run against a local build instead of a CI one. One choice
@@ -132,10 +140,102 @@ export interface StageDef {
   review?: Review;
   localBuild?: LocalBuildDef;
   /**
+   * The stage is the recipe's `contentReview`: the console runs the fixed
+   * checks, then starts a read-only reviewer session with its own prompt (the
+   * stage's `prompt` is only what the card shows). Its answer is saved as the
+   * review's findings.
+   */
+  contentReview?: boolean;
+  /**
    * Sync hook given the probe results and the declarative outcome; returns
    * any of { done, blockedReason, remote } to override them.
    */
   status?: HookRef;
+}
+
+// ── content review (checks generated content before it goes out) ─────────
+
+export type FindingLevel = "blocker" | "warning" | "note";
+
+/** One piece of content the review covers. */
+export interface ContentFileDef {
+  /** Short id, used by rules and in findings. */
+  id: string;
+  label: string;
+  /** Relative to the review's `dir` (or absolute). */
+  path: Template;
+  /** html: tags are stripped for lengths and links come from href/src; text: as written. */
+  format: "html" | "text";
+  /** Missing is a blocker unless optional. */
+  optional?: boolean;
+}
+
+interface ContentRuleBase {
+  id: string;
+  label: string;
+  level: FindingLevel;
+  /** File ids the rule applies to; "*" = all. */
+  files: string[];
+  /** What a finding says. Template; may use {match} (the text found) and {limit}. */
+  message: Template;
+  /** How to fix it (shown with the finding). */
+  fix?: string;
+}
+
+export type ContentRuleDef =
+  /** The regex must not match (each match is a finding). */
+  | (ContentRuleBase & { type: "forbid"; regex: Template; flags?: string })
+  /** The regex must match at least once. */
+  | (ContentRuleBase & { type: "require"; regex: Template; flags?: string })
+  /**
+   * Text must be at most `max` characters. With `capture` (a regex whose group
+   * 1 is the text), each capture is checked, for example a subject line. With
+   * `split` (a regex), each part is checked, for example the tweets of a
+   * thread. `ignore` (a regex) removes matching text first. `urlLength` counts
+   * every URL as that many characters (X counts links as 23).
+   */
+  | (ContentRuleBase & {
+      type: "maxLength";
+      max: number;
+      capture?: Template;
+      split?: Template;
+      ignore?: Template;
+      urlLength?: number;
+      flags?: string;
+    })
+  /** Every local image the file uses exists, and is at most `maxBytes`. */
+  | (ContentRuleBase & { type: "localImages"; maxBytes?: number })
+  /** Links matching `match` carry each query parameter, its value matching the regex. */
+  | (ContentRuleBase & { type: "linkParams"; match: Template; params: Record<string, string> })
+  /** Every `<a>` has these attributes with these exact values (html files). */
+  | (ContentRuleBase & { type: "linkAttrs"; attrs: Record<string, string> })
+  /** Links matching `match` point at the same page (query and hash ignored) in every file. */
+  | (ContentRuleBase & { type: "sameLink"; match: Template })
+  /**
+   * Every http(s) link answers (checked over the network, after the fast
+   * checks). Links matching `skip` are not checked, for example a blog post
+   * that is published later.
+   */
+  | (ContentRuleBase & { type: "linksOpen"; skip?: Template });
+
+export interface ContentReviewDef {
+  /** Stage id that runs the review (its `contentReview` is true). */
+  stage: string;
+  /** Folder holding the content. */
+  dir: Template;
+  /** Folder the report is written to (relative to the repo, or absolute). */
+  reportDir: Template;
+  files: ContentFileDef[];
+  /** What the content must be true to: release notes, the analysis. The reviewer checks facts against them. */
+  sources?: Template[];
+  /** House rules per file id: the docs that say how each piece is written. */
+  guides?: Record<string, Template[]>;
+  /** Fixed checks, run without AI. */
+  rules?: ContentRuleDef[];
+  /** Extra instructions for the reviewer. */
+  instructions?: string;
+  /** Stage id whose session fixes the findings ("Fix with agent"). */
+  fixStage?: string;
 }
 
 // ── settings (per-machine, stored in the repo, gitignored) ───────────────
@@ -338,4 +438,6 @@ export interface Recipe {
   reset?: ResetDef;
   risk?: RiskDef;
   build?: BuildDef;
+  /** A review of generated content (marketing copy) before it goes out. */
+  contentReview?: ContentReviewDef;
 }

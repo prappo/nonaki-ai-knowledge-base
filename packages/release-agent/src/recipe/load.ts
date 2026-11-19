@@ -31,10 +31,14 @@ const ENV_REF = /^env\.[A-Za-z_][A-Za-z0-9_]*$/;
 /** `"<relative module>#<export>"`, staying inside the recipe's folder. */
 const HOOK_REF = /^(?!\/)(?!.*(^|\/)\.\.(\/|#))[\w./-]+\.m?js#[A-Za-z_$][\w$]*$/;
 const RULES = ["required", "isDirectory", "contains", "notSamePath"];
-const REVIEWS = ["file", "files", "docs", "changes"];
+const REVIEWS = ["file", "files", "docs", "changes", "contentReview"];
+const FINDING_LEVELS = ["blocker", "warning", "note"];
+const CONTENT_RULES = ["forbid", "require", "maxLength", "localImages", "linkParams", "linkAttrs", "sameLink", "linksOpen"];
 
 class Validator {
   problems: string[] = [];
+  /** A check names `contentReview`, so the recipe needs one. */
+  usesContentReview = false;
   /** Variables any template may use. */
   known = new Set<string>(["version", "repo", "repoParent"]);
 
@@ -126,6 +130,11 @@ class Validator {
       }
     }
     if ("not" in v) return this.check(v.not, `${at}.not`);
+    if ("contentReview" in v) {
+      if (v.contentReview !== "passed") this.fail(`${at}.contentReview`, 'must be "passed"');
+      this.usesContentReview = true;
+      return;
+    }
     this.fail(at, `unknown check (${keys.join(", ") || "empty"})`);
   }
 }
@@ -320,6 +329,7 @@ export function validateRecipe(input: unknown): Recipe {
         }
       }
       if (s.status !== undefined) v.hook(s.status, `${sat}.status`);
+      if (s.contentReview !== undefined && typeof s.contentReview !== "boolean") v.fail(`${sat}.contentReview`, "must be true or false");
       if (s.localBuild !== undefined) {
         const lb = s.localBuild;
         if (!isObj(lb)) v.fail(`${sat}.localBuild`, "must be an object");
@@ -469,8 +479,115 @@ export function validateRecipe(input: unknown): Recipe {
     }
   }
 
+  // content review
+  if (r.contentReview !== undefined) validateContentReview(v, r.contentReview, r.stages);
+  else if (v.usesContentReview) v.fail("contentReview", "a check uses { contentReview } but the recipe has no `contentReview`");
+  if (Array.isArray(r.stages) && r.stages.some((s: unknown) => isObj(s) && s.contentReview === true) && r.contentReview === undefined) {
+    v.fail("contentReview", "a stage has contentReview: true but the recipe has no `contentReview`");
+  }
+
   if (v.problems.length) throw new RecipeError(v.problems);
   return input as unknown as Recipe;
+}
+
+function validateContentReview(v: Validator, c: unknown, stages: unknown): void {
+  if (!isObj(c)) return v.fail("contentReview", "must be an object");
+  const stageList = Array.isArray(stages) ? stages.filter(isObj) : [];
+  const stage = stageList.find((s) => s.id === c.stage);
+  if (typeof c.stage !== "string" || !stage) v.fail("contentReview.stage", "must be a stage id");
+  else if (stage.contentReview !== true) v.fail("contentReview.stage", `stage "${c.stage}" needs contentReview: true`);
+  if (c.fixStage !== undefined && !stageList.some((s) => s.id === c.fixStage)) v.fail("contentReview.fixStage", "must be a stage id");
+  v.template(c.dir, "contentReview.dir");
+  v.template(c.reportDir, "contentReview.reportDir");
+  v.str(c.instructions, "contentReview.instructions", true);
+  const ids = new Set<string>();
+  if (!Array.isArray(c.files) || c.files.length === 0) v.fail("contentReview.files", "must be a non-empty array");
+  else
+    c.files.forEach((f: unknown, i: number) => {
+      const at = `contentReview.files[${i}]`;
+      if (!isObj(f)) return v.fail(at, "must be an object");
+      if (typeof f.id !== "string" || !ID.test(f.id)) v.fail(`${at}.id`, "must be a lower-case slug");
+      else if (ids.has(f.id)) v.fail(`${at}.id`, `duplicate "${f.id}"`);
+      else ids.add(f.id);
+      v.str(f.label, `${at}.label`);
+      v.template(f.path, `${at}.path`);
+      if (f.format !== "html" && f.format !== "text") v.fail(`${at}.format`, 'must be "html" or "text"');
+      if (f.optional !== undefined && typeof f.optional !== "boolean") v.fail(`${at}.optional`, "must be true or false");
+    });
+  if (c.sources !== undefined) {
+    if (!Array.isArray(c.sources)) v.fail("contentReview.sources", "must be an array");
+    else c.sources.forEach((t: unknown, i: number) => v.template(t, `contentReview.sources[${i}]`));
+  }
+  if (c.guides !== undefined) {
+    if (!isObj(c.guides)) v.fail("contentReview.guides", "must be an object of file id → paths");
+    else
+      for (const [id, paths] of Object.entries(c.guides)) {
+        if (!ids.has(id)) v.fail(`contentReview.guides.${id}`, "not a file id");
+        if (!Array.isArray(paths)) v.fail(`contentReview.guides.${id}`, "must be an array");
+        else paths.forEach((t: unknown, i: number) => v.template(t, `contentReview.guides.${id}[${i}]`));
+      }
+  }
+  const ruleIds = new Set<string>();
+  const extra = new Set(["match", "limit", "length", "problem", "size", "param", "attr", "expected"]);
+  const pattern = (value: unknown, at: string, flags = "", optional = false) => {
+    if (value === undefined && optional) return;
+    v.template(value, at);
+    if (typeof value === "string") {
+      const sample = value.replace(/\{\{|\}\}|\{[A-Za-z_][\w.-]*\}/g, (t) => (t === "{{" ? "{" : t === "}}" ? "}" : escapeRegExp("1.0.0")));
+      v.regex(sample, at, flags.replace("g", ""));
+    }
+  };
+  if (c.rules !== undefined) {
+    if (!Array.isArray(c.rules)) v.fail("contentReview.rules", "must be an array");
+    else
+      c.rules.forEach((rule: unknown, i: number) => {
+        const at = `contentReview.rules[${i}]`;
+        if (!isObj(rule)) return v.fail(at, "must be an object");
+        if (typeof rule.id !== "string" || !ID.test(rule.id)) v.fail(`${at}.id`, "must be a lower-case slug");
+        else if (ruleIds.has(rule.id)) v.fail(`${at}.id`, `duplicate "${rule.id}"`);
+        else ruleIds.add(rule.id);
+        v.str(rule.label, `${at}.label`);
+        if (!FINDING_LEVELS.includes(rule.level as string)) v.fail(`${at}.level`, `must be one of ${FINDING_LEVELS.join(", ")}`);
+        if (v.strArray(rule.files, `${at}.files`)) {
+          for (const id of rule.files as string[]) if (id !== "*" && !ids.has(id)) v.fail(`${at}.files`, `unknown file id "${id}"`);
+        }
+        v.template(rule.message, `${at}.message`, extra);
+        v.str(rule.fix, `${at}.fix`, true);
+        const flags = typeof rule.flags === "string" ? rule.flags : "m";
+        switch (rule.type) {
+          case "forbid":
+          case "require":
+            pattern(rule.regex, `${at}.regex`, flags);
+            break;
+          case "maxLength":
+            if (typeof rule.max !== "number" || rule.max <= 0) v.fail(`${at}.max`, "must be a positive number");
+            pattern(rule.capture, `${at}.capture`, flags, true);
+            pattern(rule.split, `${at}.split`, flags, true);
+            pattern(rule.ignore, `${at}.ignore`, flags, true);
+            if (rule.urlLength !== undefined && (typeof rule.urlLength !== "number" || rule.urlLength < 0)) v.fail(`${at}.urlLength`, "must be a number");
+            break;
+          case "localImages":
+            if (rule.maxBytes !== undefined && (typeof rule.maxBytes !== "number" || rule.maxBytes <= 0)) v.fail(`${at}.maxBytes`, "must be a positive number");
+            break;
+          case "linkParams":
+            pattern(rule.match, `${at}.match`, "i");
+            if (!isObj(rule.params)) v.fail(`${at}.params`, "must be an object of name → regex");
+            else for (const [name, p] of Object.entries(rule.params)) v.regex(p, `${at}.params.${name}`);
+            break;
+          case "linkAttrs":
+            if (!isObj(rule.attrs) || !Object.values(rule.attrs).every((x) => typeof x === "string")) v.fail(`${at}.attrs`, "must be an object of name → value");
+            break;
+          case "sameLink":
+            pattern(rule.match, `${at}.match`, "i");
+            break;
+          case "linksOpen":
+            pattern(rule.skip, `${at}.skip`, "i", true);
+            break;
+          default:
+            v.fail(`${at}.type`, `must be one of ${CONTENT_RULES.join(", ")}`);
+        }
+      });
+  }
 }
 
 /** A recipe with its hooks loaded, ready for stageStates / healthChecks. */

@@ -3313,3 +3313,257 @@ button.list-row:hover,
 	color: var(--danger, #c2352b);
 	background: var(--surface, #fff);
 }
+
+/* ── Content review (findings on the Check marketing content card) ───────── */
+
+.cr-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 4px;
+	padding-top: 12px;
+	border-top: 0.5px solid var(--separator);
+}
+
+.cr-status {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 9px 11px;
+	border-radius: 8px;
+	background: var(--fill);
+	color: var(--secondary);
+}
+
+.cr-status .lucide {
+	flex: none;
+	margin-top: 1px;
+}
+
+.cr-status-passed {
+	background: var(--green-tint);
+	color: var(--green-text);
+}
+
+.cr-status-open {
+	background: var(--orange-tint);
+	color: var(--orange-text);
+}
+
+.cr-status-title {
+	margin: 0;
+	font-size: 12.5px;
+	font-weight: 600;
+}
+
+.cr-status-meta {
+	margin: 2px 0 0;
+	font-size: 11.5px;
+	color: var(--secondary);
+}
+
+.cr-summary {
+	margin: 0;
+	font-size: 12.5px;
+	color: var(--secondary);
+	font-style: italic;
+}
+
+.cr-files {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.cr-file {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	width: 100%;
+	padding: 6px 9px;
+	border: 0;
+	border-radius: 7px;
+	background: var(--surface-sunken);
+	box-shadow: 0 0 0 0.5px var(--separator);
+	color: var(--label);
+	font: inherit;
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cr-file:hover {
+	background: var(--hover);
+}
+
+.cr-file.is-selected {
+	background: var(--selected);
+	box-shadow: 0 0 0 1px var(--blue);
+}
+
+.cr-file.is-missing .cr-file-label {
+	color: var(--tertiary);
+}
+
+.cr-file-label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cr-file-counts {
+	display: inline-flex;
+	gap: 3px;
+	flex: none;
+}
+
+.cr-count {
+	min-width: 18px;
+	padding: 0 5px;
+	border-radius: 999px;
+	font-size: 10.5px;
+	font-weight: 700;
+	line-height: 16px;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	background: var(--fill);
+	color: var(--secondary);
+}
+
+.cr-count-blocker {
+	background: var(--red-tint);
+	color: var(--red-text);
+}
+
+.cr-count-warning {
+	background: var(--orange-tint);
+	color: var(--orange-text);
+}
+
+.cr-count-ok {
+	background: var(--green-tint);
+	color: var(--green-text);
+}
+
+.cr-findings {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.cr-finding {
+	padding: 8px 10px 8px 11px;
+	border-radius: 8px;
+	background: var(--surface);
+	box-shadow: 0 0 0 0.5px var(--separator);
+	border-left: 3px solid var(--tertiary);
+	font-size: 12.5px;
+}
+
+.cr-finding-blocker {
+	border-left-color: var(--red);
+}
+
+.cr-finding-warning {
+	border-left-color: var(--orange);
+}
+
+.cr-finding.is-dismissed {
+	opacity: 0.6;
+	border-left-color: var(--tertiary);
+}
+
+.cr-finding-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	color: var(--secondary);
+}
+
+.cr-finding-blocker .cr-finding-head .lucide,
+.cr-finding-blocker .cr-finding-level {
+	color: var(--red-text);
+}
+
+.cr-finding-warning .cr-finding-head .lucide,
+.cr-finding-warning .cr-finding-level {
+	color: var(--orange-text);
+}
+
+.cr-finding-level {
+	font-weight: 700;
+}
+
+.cr-finding-label {
+	font-weight: 600;
+	color: var(--label);
+}
+
+.cr-finding-file {
+	padding: 0 6px;
+	border-radius: 999px;
+	background: var(--fill);
+}
+
+.cr-finding-source {
+	margin-left: auto;
+	color: var(--tertiary);
+}
+
+.cr-finding-message {
+	margin: 4px 0 0;
+	color: var(--label);
+	overflow-wrap: anywhere;
+}
+
+.cr-quote {
+	margin: 6px 0 0;
+	padding: 4px 8px;
+	border-left: 2px solid var(--separator-strong);
+	background: var(--surface-sunken);
+	border-radius: 0 6px 6px 0;
+	font-family: var(--mono);
+	font-size: 11.5px;
+	color: var(--secondary);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.cr-quote-missing {
+	font-family: var(--font);
+	color: var(--orange-text);
+}
+
+.cr-fix,
+.cr-dismissed {
+	margin: 6px 0 0;
+	color: var(--secondary);
+}
+
+.cr-actions,
+.cr-dismiss-form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	margin-top: 6px;
+}
+
+.cr-dismiss-form input {
+	flex: 1 1 200px;
+}
+
+.cr-toggle-dismissed {
+	align-self: flex-start;
+	font-size: 12px;
+}

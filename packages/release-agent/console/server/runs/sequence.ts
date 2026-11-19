@@ -19,6 +19,7 @@ import { EventEmitter } from 'node:events';
 import type { Run, RunEvent, RunManager } from './runner.ts';
 import { STAGES, stagePrompt, stageStates, type StageContext, type StageDefinition } from '../release/stages.ts';
 import type { ReleaseVersion } from '../release/version.ts';
+import { startStageRun } from '../release/contentReview.ts';
 
 export type SequenceStatus = 'running' | 'paused' | 'done' | 'stopped';
 
@@ -156,7 +157,7 @@ export class Sequencer extends EventEmitter {
 	}
 
 	private launch( stage: StageDefinition ): void {
-		const run = this.options.manager.start( stage.id, this.version!.version, stagePrompt( stage, this.version! ) );
+		const run = startStageRun( this.options.manager, stage.id, this.options.contextFor( this.version! ).root, this.version!, stagePrompt( stage, this.version! ) );
 
 		this.current!.runIds.push( run.id );
 		this.watch( run );

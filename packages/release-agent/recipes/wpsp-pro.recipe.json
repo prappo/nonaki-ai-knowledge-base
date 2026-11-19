@@ -326,6 +326,36 @@
       }
     },
     {
+      "id": "marketing-review",
+      "group": "prepare",
+      "title": "Check marketing content",
+      "prompt": "Check marketing content {version}",
+      "summary": "Checks everything Write marketing content made before any of it goes out. Fixed checks run first: files, version, placeholders, merge tags, lengths, link tracking, images and dead links. Then a read-only Claude Code session reads it all against the release notes and each piece's own house rules. Blockers must be fixed; warnings fixed or dismissed with a reason. The blog, email and notification drafts wait until it passes.",
+      "contentReview": true,
+      "blockedUntil": [
+        {
+          "check": {
+            "any": [
+              {
+                "fileExists": "{releaseDir}/blog.html"
+              },
+              {
+                "fileExists": "{releaseDir}/newsletter.html"
+              }
+            ]
+          },
+          "reason": "Run Write marketing content first. There is no blog post or newsletter to check yet."
+        }
+      ],
+      "doneWhen": {
+        "contentReview": "passed"
+      },
+      "review": {
+        "type": "contentReview",
+        "label": "Findings"
+      }
+    },
+    {
       "id": "blog-draft",
       "group": "publish",
       "title": "Create blog post draft",
@@ -363,6 +393,12 @@
             ]
           },
           "reason": "Run Write marketing content first. The featured image does not exist yet."
+        },
+        {
+          "check": {
+            "contentReview": "passed"
+          },
+          "reason": "Run Check marketing content first: it has to pass (no blockers, every warning fixed or dismissed) before anything leaves the repo."
         }
       ],
       "review": {
@@ -394,6 +430,12 @@
             "fileExists": "{releaseDir}/newsletter.html"
           },
           "reason": "Run Write marketing content first. newsletter.html does not exist yet."
+        },
+        {
+          "check": {
+            "contentReview": "passed"
+          },
+          "reason": "Run Check marketing content first: it has to pass (no blockers, every warning fixed or dismissed) before anything leaves the repo."
         }
       ],
       "review": {
@@ -427,6 +469,12 @@
             "fileExists": "{releaseDir}/notification-lite.html"
           },
           "reason": "Run Write marketing content first. notification-lite.html does not exist yet."
+        },
+        {
+          "check": {
+            "contentReview": "passed"
+          },
+          "reason": "Run Check marketing content first: it has to pass (no blockers, every warning fixed or dismissed) before anything leaves the repo."
         }
       ],
       "review": {
@@ -743,9 +791,10 @@
       },
       {
         "id": "reviews",
-        "title": "PR reviews",
+        "title": "Reviews",
         "match": [
-          "^reviews/"
+          "^reviews/",
+          "^marketing-review/"
         ],
         "main": [
           "^reviews/readme\\.md$"
@@ -833,5 +882,333 @@
       "tools/"
     ],
     "ciWorkflow": "build-and-export.yml"
+  },
+  "contentReview": {
+    "stage": "marketing-review",
+    "fixStage": "marketing",
+    "dir": "{releaseDir}",
+    "reportDir": "{releaseDir}/marketing-review",
+    "files": [
+      {
+        "id": "blog",
+        "label": "Blog post",
+        "path": "blog.html",
+        "format": "html"
+      },
+      {
+        "id": "newsletter",
+        "label": "Newsletter",
+        "path": "newsletter.html",
+        "format": "html"
+      },
+      {
+        "id": "twitter",
+        "label": "X (Twitter)",
+        "path": "twitter.txt",
+        "format": "text"
+      },
+      {
+        "id": "linkedin",
+        "label": "LinkedIn",
+        "path": "linkedin.txt",
+        "format": "text"
+      },
+      {
+        "id": "slack-pro",
+        "label": "Slack (Pro)",
+        "path": "slack-pro.txt",
+        "format": "text"
+      },
+      {
+        "id": "slack-lite",
+        "label": "Slack (Lite)",
+        "path": "slack-lite.txt",
+        "format": "text"
+      },
+      {
+        "id": "notification-pro",
+        "label": "Notification (Pro)",
+        "path": "notification-pro.html",
+        "format": "html"
+      },
+      {
+        "id": "notification-lite",
+        "label": "Notification (Lite)",
+        "path": "notification-lite.html",
+        "format": "html"
+      }
+    ],
+    "sources": [
+      "{analysisFile}"
+    ],
+    "guides": {
+      "blog": [
+        ".claude/commands/wpsp-marketing-blog-announcement.md"
+      ],
+      "newsletter": [
+        ".claude/commands/wpsp-marketing-newsletter.md"
+      ],
+      "twitter": [
+        ".claude/commands/wpsp-marketing-twitter-announcement.md"
+      ],
+      "linkedin": [
+        ".claude/commands/wpsp-marketing-linkedin-announcement.md"
+      ],
+      "slack-pro": [
+        ".claude/commands/wpsp-marketing-slack-announcement.md"
+      ],
+      "slack-lite": [
+        ".claude/commands/wpsp-marketing-slack-announcement.md"
+      ],
+      "notification-pro": [
+        ".claude/commands/wpsp-marketing-internal-notification.md"
+      ],
+      "notification-lite": [
+        ".claude/commands/wpsp-marketing-internal-notification.md"
+      ]
+    },
+    "instructions": "WP Simple Pay comes as Pro (paid) and Lite (free, on WordPress.org). The newsletter goes to Lite and Pro customers together; the Slack and notification pieces come in a Pro and a Lite version. The blog post is published after this review, so its link not opening yet is expected.",
+    "rules": [
+      {
+        "id": "placeholders",
+        "label": "Placeholder left in",
+        "level": "blocker",
+        "files": [
+          "*"
+        ],
+        "type": "forbid",
+        "regex": "\\b(?:TODO|TBD|FIXME|XXX)\\b|[Ll]orem ipsum|\\[(?:[Ll]ink|LINK|URL|[Ii]nsert[^\\]]*)\\]|\\{{(?:version|title|link|url|date)\\}}",
+        "message": "Draft placeholder \"{match}\" is still in the text.",
+        "fix": "Replace it with the real text or link."
+      },
+      {
+        "id": "merge-tags",
+        "label": "Broken merge tag",
+        "level": "blocker",
+        "files": [
+          "newsletter"
+        ],
+        "type": "forbid",
+        "regex": "\\{{\\{{(?!\\s*(?:Contact|Account):[A-Za-z]+(?:\\|\\\"[^\\\"]*\\\")?\\s*\\}}\\}})",
+        "message": "A merge tag isn't written the way Lindris reads it, so it would show as raw text.",
+        "fix": "Use {{{{ Contact:firstName|\"there\" }}}} or {{{{ Account:FullAddress }}}}."
+      },
+      {
+        "id": "version",
+        "label": "Version missing",
+        "level": "blocker",
+        "files": [
+          "blog",
+          "newsletter",
+          "slack-pro",
+          "slack-lite"
+        ],
+        "type": "require",
+        "regex": "{version}",
+        "message": "The text never mentions version {version}.",
+        "fix": "Name the version, as in earlier announcements."
+      },
+      {
+        "id": "no-script",
+        "label": "Script in HTML",
+        "level": "blocker",
+        "files": [
+          "blog",
+          "newsletter",
+          "notification-pro",
+          "notification-lite"
+        ],
+        "type": "forbid",
+        "regex": "<script\\b|\\bon(?:click|load|error)\\s*=",
+        "flags": "gim",
+        "message": "The HTML has a script or event handler (\"{match}\"). Email clients and WordPress strip it.",
+        "fix": "Remove it."
+      },
+      {
+        "id": "subject",
+        "label": "Subject line",
+        "level": "blocker",
+        "files": [
+          "newsletter"
+        ],
+        "type": "require",
+        "regex": "^\\s*Subject[^:\\n]*:\\s*\\S",
+        "flags": "im",
+        "message": "The newsletter has no subject line in its header comment.",
+        "fix": "Add \"Subject line: …\" to the comment at the top."
+      },
+      {
+        "id": "subject-length",
+        "label": "Subject too long",
+        "level": "warning",
+        "files": [
+          "newsletter"
+        ],
+        "type": "maxLength",
+        "max": 70,
+        "capture": "^\\s*Subject[^:\\n]*:\\s*(.+?)\\s*$",
+        "flags": "im",
+        "message": "The subject line is {length} characters; inboxes cut it off after about {limit}.",
+        "fix": "Shorten it."
+      },
+      {
+        "id": "preview",
+        "label": "Preview text",
+        "level": "warning",
+        "files": [
+          "newsletter"
+        ],
+        "type": "require",
+        "regex": "^\\s*Preview[^:\\n]*:\\s*\\S",
+        "flags": "im",
+        "message": "The newsletter has no preview text in its header comment.",
+        "fix": "Add \"Preview text: …\" to the comment at the top."
+      },
+      {
+        "id": "preview-length",
+        "label": "Preview text too long",
+        "level": "warning",
+        "files": [
+          "newsletter"
+        ],
+        "type": "maxLength",
+        "max": 140,
+        "capture": "^\\s*Preview[^:\\n]*:\\s*(.+?)\\s*$",
+        "flags": "im",
+        "message": "The preview text is {length} characters; inboxes show about {limit}.",
+        "fix": "Shorten it to one sentence."
+      },
+      {
+        "id": "tweet-length",
+        "label": "Tweet too long",
+        "level": "blocker",
+        "files": [
+          "twitter"
+        ],
+        "type": "maxLength",
+        "max": 280,
+        "split": "^(?:===[^\\n]*===|---[^\\n]*---)\\s*$",
+        "ignore": "^\\([^\\n]*\\b(?:char|length)[^\\n]*\\)\\s*$",
+        "urlLength": 23,
+        "message": "This tweet is {length} characters as X counts it (links count as 23); the limit is {limit}.",
+        "fix": "Trim it, or move a point to the thread.",
+        "flags": "im"
+      },
+      {
+        "id": "linkedin-length",
+        "label": "LinkedIn post too long",
+        "level": "warning",
+        "files": [
+          "linkedin"
+        ],
+        "type": "maxLength",
+        "max": 3000,
+        "message": "The post is {length} characters; LinkedIn allows {limit}.",
+        "fix": "Cut it down; 1,000 to 1,500 reads best."
+      },
+      {
+        "id": "tier-tags",
+        "label": "Inline plan tag",
+        "level": "warning",
+        "files": [
+          "newsletter",
+          "blog"
+        ],
+        "type": "forbid",
+        "regex": "\\((?:Pro|Plus|Professional|Elite)(?: plan)? only\\)|requires (?:a |the )?(?:Plus|Professional|Elite|Pro) (?:license|plan)",
+        "flags": "gim",
+        "message": "Feature copy names a plan (\"{match}\"). The newsletter guide says to keep plan talk to one upgrade block.",
+        "fix": "Drop the tag; use the Pro upsell block if needed."
+      },
+      {
+        "id": "notification-utm-pro",
+        "label": "Link tracking",
+        "level": "warning",
+        "files": [
+          "notification-pro"
+        ],
+        "type": "linkParams",
+        "match": "^https?://(?:www\\.)?wpsimplepay\\.com",
+        "params": {
+          "utm_source": "WordPress",
+          "utm_campaign": "pro-plugin",
+          "utm_medium": "notification-inbox",
+          "utm_content": ".+"
+        },
+        "message": "This link is missing or has the wrong {param}: {match}",
+        "fix": "Add utm_source=WordPress&utm_campaign=pro-plugin&utm_medium=notification-inbox&utm_content=<the title>."
+      },
+      {
+        "id": "notification-utm-lite",
+        "label": "Link tracking",
+        "level": "warning",
+        "files": [
+          "notification-lite"
+        ],
+        "type": "linkParams",
+        "match": "^https?://(?:www\\.)?wpsimplepay\\.com",
+        "params": {
+          "utm_source": "WordPress",
+          "utm_campaign": "lite-plugin",
+          "utm_medium": "notification-inbox",
+          "utm_content": ".+"
+        },
+        "message": "This link is missing or has the wrong {param}: {match}",
+        "fix": "Add utm_source=WordPress&utm_campaign=lite-plugin&utm_medium=notification-inbox&utm_content=<the title>."
+      },
+      {
+        "id": "notification-new-tab",
+        "label": "Link opens in place",
+        "level": "warning",
+        "files": [
+          "notification-pro",
+          "notification-lite"
+        ],
+        "type": "linkAttrs",
+        "attrs": {
+          "target": "_blank",
+          "rel": "noopener noreferrer"
+        },
+        "message": "A link lacks {attr}, so it would open inside the WordPress admin.",
+        "fix": "Add target=\"_blank\" rel=\"noopener noreferrer\"."
+      },
+      {
+        "id": "same-blog-link",
+        "label": "Different blog links",
+        "level": "warning",
+        "files": [
+          "*"
+        ],
+        "type": "sameLink",
+        "match": "^https?://(?:www\\.)?wpsimplepay\\.com/introducing-",
+        "message": "This links to {match}, but the other pieces link to {expected}.",
+        "fix": "Use the same blog post link everywhere."
+      },
+      {
+        "id": "images",
+        "label": "Image",
+        "level": "blocker",
+        "files": [
+          "blog",
+          "newsletter"
+        ],
+        "type": "localImages",
+        "maxBytes": 2097152,
+        "message": "Image {match} is {size}{problem}.",
+        "fix": "Add the image, or make it smaller (under 2 MB)."
+      },
+      {
+        "id": "links-open",
+        "label": "Dead link",
+        "level": "warning",
+        "files": [
+          "*"
+        ],
+        "type": "linksOpen",
+        "skip": "^https?://(?:www\\.)?wpsimplepay\\.com/introducing-|localhost|example\\.(?:com|org)|/wp-admin",
+        "message": "{match} {problem}.",
+        "fix": "Fix the link, or dismiss this if the page goes live with the release."
+      }
+    ]
   }
 }

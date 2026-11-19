@@ -8,6 +8,7 @@ import { isActive } from '../../lib/runState.ts';
 import type { ConsoleModel } from '../../app/useConsole.ts';
 import { RunPanel } from '../run/RunPanel.tsx';
 import { SequenceBanner } from './Sequence.tsx';
+import { ContentReviewPanel } from './ContentReviewPanel.tsx';
 import { StageRow, stageResult, type LiveState } from './StageRow.tsx';
 import { Spinner } from '../../components/Spinner.tsx';
 
@@ -307,7 +308,23 @@ export function PipelinePage( {
 										} }
 										onReview={ onReview }
 										onShowRun={ () => onFocusStage( stage.id ) }
-									/>
+									>
+										{ stage.contentReview && validVersion && (
+											<ContentReviewPanel
+												version={ validVersion }
+												// a run ending (the reviewer's, or a fix) can change the review
+												refreshKey={ `${ stage.status }|${ state.runs.slice( 0, 3 ).map( ( item ) => `${ item.id }:${ item.status }` ).join( ',' ) }` }
+												running={ active }
+												onOpenFile={ onOpenFile }
+												onFixStarted={ ( started ) => {
+													model.showRun( started );
+													onFocusStage( started.stageId );
+													void model.refresh();
+												} }
+												onChanged={ () => void model.refresh() }
+											/>
+										) }
+									</StageRow>
 								) ) }
 							</ol>
 						</section>

@@ -56,11 +56,17 @@ const opened = await openRecipe(path.join(import.meta.dirname, "../../recipes/wp
  * no counterpart to compare them with, so the adapter leaves them out, and
  * test/wpsp-docs-site-pr.test.ts covers them instead.
  */
-export const ENGINE_ONLY_STAGES = new Set(["docs-site-pr"]);
+export const ENGINE_ONLY_STAGES = new Set(["docs-site-pr", "marketing-review"]);
+
+/** The content review gate on the draft stages is engine-only too (test/content-review.test.ts covers it). */
+const isReviewGate = (req: { check: object }) => "contentReview" in req.check;
 
 export const recipe: typeof opened.recipe = {
   ...opened.recipe,
-  stages: opened.recipe.stages.filter((s) => !ENGINE_ONLY_STAGES.has(s.id)),
+  contentReview: undefined,
+  stages: opened.recipe.stages
+    .filter((s) => !ENGINE_ONLY_STAGES.has(s.id))
+    .map((s) => (s.blockedUntil?.some(isReviewGate) ? { ...s, blockedUntil: s.blockedUntil.filter((req) => !isReviewGate(req)) } : s)),
   checks: opened.recipe.checks?.map((c) =>
     c.stages ? { ...c, stages: c.stages.filter((id) => !ENGINE_ONLY_STAGES.has(id)) } : c,
   ),
@@ -217,7 +223,7 @@ export interface StageDefinition {
   localBuild: boolean;
 }
 
-const commandOf = (prompt: string) => prompt.match(/^\/(\S+)/)![1];
+const commandOf = (prompt: string) => prompt.match(/^\/(\S+)/)?.[1] ?? prompt.split(/\s+/)[0];
 
 export const STAGES: StageDefinition[] = recipe.stages.map((s) => ({
   id: s.id,

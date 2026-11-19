@@ -5,6 +5,7 @@
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { reviewPassed } from "./contentReview.ts";
 import { resolvePath, type ReleaseContext } from "./context.ts";
 import { render } from "./template.ts";
 import type { Check } from "./types.ts";
@@ -54,6 +55,7 @@ export function evaluate(check: Check, ctx: ReleaseContext, missing?: MissingSin
   if ("gitTag" in check) {
     return hasLocalTag(check.repo ? p(check.repo) : ctx.root, render(check.gitTag, ctx.vars));
   }
+  if ("contentReview" in check) return reviewPassed(ctx);
   if ("all" in check) {
     // keep going after a failure so `missing` lists every absent file
     let ok = true;

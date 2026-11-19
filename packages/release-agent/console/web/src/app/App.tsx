@@ -75,6 +75,9 @@ export function App() {
 			openFile( target.path );
 		} else if ( target.type === 'docs' ) {
 			navigate( 'library', { source: 'docs' } );
+		} else if ( target.type === 'contentReview' ) {
+			// the findings are on the stage's own card
+			navigate( 'pipeline' );
 		} else if ( target.type === 'files' ) {
 			navigate( 'library', validVersion ? { source: validVersion.split( '.' ).slice( 0, 3 ).join( '.' ) } : {} );
 		} else {

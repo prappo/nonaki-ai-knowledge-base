@@ -18,7 +18,8 @@ export type ResolvedReview =
   | { type: "file"; path: string; label: string }
   | { type: "files"; label: string }
   | { type: "docs"; label: string }
-  | { type: "changes"; label: string };
+  | { type: "changes"; label: string }
+  | { type: "contentReview"; label: string };
 
 /** A build record as the build runner writes it (`build.json`). */
 export interface BuildRecord {
@@ -70,6 +71,8 @@ export interface StageState {
   review: ResolvedReview | null;
   /** What a remote already has (from a status hook). */
   remote: StageRemote | null;
+  /** The stage runs the recipe's content review (its card shows the findings). */
+  contentReview: boolean;
 }
 
 export interface StageOptions {
@@ -86,6 +89,7 @@ export function stagePrompt(stage: StageDef, ctx: ReleaseContext): string {
 
 /** The terminal equivalent of a stage run. */
 export function terminalCommand(stage: StageDef, ctx: ReleaseContext): string {
+  if (stage.contentReview) return "(runs in the Release Console: it checks the content, then starts a read-only reviewer)";
   const browser = stage.requires?.includes("browser") ? " --chrome" : "";
   return `claude${browser} ${quoteArg(stagePrompt(stage, ctx))}`;
 }
@@ -201,6 +205,7 @@ export function stageStates(ctx: ReleaseContext, options: StageOptions = {}): St
       missing: stage.listMissing ? missingPaths.map((p) => path.basename(p)) : [],
       review: review(stage, ctx),
       remote,
+      contentReview: stage.contentReview === true,
     };
   });
 }

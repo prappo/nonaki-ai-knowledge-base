@@ -62,6 +62,8 @@ export interface ConfigState {
 }
 export type { Gate, Question } from '../../../server/runs/runner.ts';
 export type { StageReview } from '../../../server/release/stages.ts';
+export type { ContentReviewState, Finding } from '../../../../src/recipe/contentReview.ts';
+import type { ContentReviewState } from '../../../../src/recipe/contentReview.ts';
 export type { TranscriptItem } from '../../../server/runs/transcript.ts';
 
 export interface ProductBrand {
@@ -218,6 +220,13 @@ export const marketingApi = {
 export const CHAT = '/api/chat';
 
 export const api = {
+	contentReview: ( version: string ) => request<{ review: ContentReviewState }>( `/api/content-review?${ query( { version } ) }` ),
+	/** Runs the fixed checks again (no AI): quick, and fine while the reviewer is running. */
+	runContentChecks: ( version: string ) => post<{ review: ContentReviewState }>( '/api/content-review/checks', { version } ),
+	dismissFinding: ( version: string, id: string, reason: string ) => post<{ review: ContentReviewState }>( '/api/content-review/dismiss', { version, id, reason } ),
+	undismissFinding: ( version: string, id: string ) => post<{ review: ContentReviewState }>( '/api/content-review/undismiss', { version, id } ),
+	/** Starts the fixing session (the recipe's fixStage) with the open findings. */
+	fixContentReview: ( version: string ) => post<{ run: RunSnapshot }>( '/api/content-review/fix', { version } ),
 	state: ( version: string ) =>
 		request<ConsoleState>( `/api/state${ version ? `?${ query( { version } ) }` : '' }` ),
 	run: ( runId: string, base = RUNS ) => request<{ run: RunSnapshot }>( `${ base }/${ runId }` ),
